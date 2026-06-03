@@ -1,0 +1,15 @@
+build/
+*.o
+*.dylib
+*.so
+*.a
+.DS_Store
+
+# AI assistant files (keep only LLM.md)
+AGENTS.md
+CLAUDE.md
+GEMINI.md
+QWEN.md
+build-local/
+docs-site/.next/
+docs-site/node_modules/
