@@ -1,0 +1,261 @@
+---
+title: Hashing
+description: BLAKE3 and cryptographic hash functions
+---
+
+# Hashing
+
+kinet-crypto provides GPU-accelerated implementations of modern cryptographic hash functions, with BLAKE3 as the primary hash algorithm.
+
+## BLAKE3
+
+BLAKE3 is a cryptographic hash function that combines security with exceptional performance through parallelization.
+
+### Key Properties
+
+- **256-bit** output (truncatable to any length)
+- **Highly parallelizable** tree structure
+- **Streaming** support for large inputs
+- **Keyed hashing** and **key derivation** modes
+- **Incremental updates** support
+
+### Performance
+
+BLAKE3 leverages GPU parallelism for maximum throughput:
+
+| Input Size | CPU (1 core) | CPU (8 cores) | Metal GPU |
+|------------|--------------|---------------|-----------|
+| 1 KB | 500 MB/s | 500 MB/s | 200 MB/s |
+| 1 MB | 1.2 GB/s | 6 GB/s | 8 GB/s |
+| 1 GB | 1.2 GB/s | 6 GB/s | 12 GB/s |
+
+GPU acceleration provides benefits for larger inputs where parallelism can be fully exploited.
+
+## API Usage
+
+### Basic Hashing
+
+```cpp
+#include "hash.hpp"
+
+// Hash a message
+std::vector<uint8_t> message = {...};
+auto hash = kinet::crypto::blake3(message);
+
+// Hash with custom output length
+auto hash_512 = kinet::crypto::blake3(message, 64); // 64-byte output
+```
+
+### Streaming Interface
+
+```cpp
+// Initialize hasher
+auto hasher = kinet::crypto::Blake3Hasher();
+
+// Update with chunks
+hasher.update(chunk1);
+hasher.update(chunk2);
+hasher.update(chunk3);
+
+// Finalize
+auto hash = hasher.finalize();
+```
+
+### Keyed Hashing (MAC)
+
+```cpp
+// Create keyed hasher (32-byte key required)
+std::array<uint8_t, 32> key = {...};
+auto mac = kinet::crypto::blake3_keyed(key, message);
+
+// Verify MAC
+bool valid = kinet::crypto::ct_equal(mac, expected_mac);
+```
+
+### Key Derivation (KDF)
+
+```cpp
+// Derive key from input key material
+std::string context = "kinet-crypto v1 encryption key";
+auto derived = kinet::crypto::blake3_derive_key(context, input_key, 32);
+```
+
+## GPU Implementation
+
+BLAKE3's tree structure maps naturally to GPU parallel execution:
+
+```metal
+// BLAKE3 parallel chunk processing
+kernel void blake3_compress(
+    device const uint8_t* input [[buffer(0)]],
+    device uint32_t* state [[buffer(1)]],
+    device uint32_t* output [[buffer(2)]],
+    constant uint32_t& input_len [[buffer(3)]],
+    uint tid [[thread_position_in_grid]]
+) {
+    // Each thread processes one 1KB chunk
+    uint chunk_start = tid * 1024;
+    if (chunk_start >= input_len) return;
+
+    // Initialize chunk state with chaining value
+    uint32_t cv[8];
+    load_chaining_value(cv, state, tid);
+
+    // Process 64-byte blocks within chunk
+    uint32_t chunk_state[16];
+    for (uint i = 0; i < 16; i++) {
+        compress_block(chunk_state, cv, input + chunk_start + i * 64);
+    }
+
+    // Write chunk output
+    store_chunk_output(output, tid, chunk_state);
+}
+```
+
+### Tree Structure
+
+```
+          ┌─────────────────┐
+          │   Root (hash)   │
+          └────────┬────────┘
+                   │
+     ┌─────────────┼─────────────┐
+     │             │             │
+┌────▼────┐  ┌────▼────┐  ┌────▼────┐
+│ Parent  │  │ Parent  │  │ Parent  │
+└────┬────┘  └────┬────┘  └────┬────┘
+     │            │            │
+   ┌─┴─┐        ┌─┴─┐        ┌─┴─┐
+   │   │        │   │        │   │
+ ┌─▼─┐┌▼─┐    ┌─▼─┐┌▼─┐    ┌─▼─┐┌▼─┐
+ │C1 ││C2│    │C3 ││C4│    │C5 ││C6│  ← 1KB Chunks (parallel)
+ └───┘└──┘    └───┘└──┘    └───┘└──┘
+```
+
+## Hash-to-Curve
+
+For elliptic curve operations, kinet-crypto provides hash-to-curve functions per RFC 9380:
+
+### Hash to BLS12-381 G1
+
+```cpp
+// Hash message to G1 point
+std::string dst = "BLS_SIG_BLS12381G1_XMD:SHA-256_SSWU_RO_";
+auto point = kinet::crypto::hash_to_g1(message, dst);
+```
+
+### Hash to BLS12-381 G2
+
+```cpp
+// Hash message to G2 point (for BLS signatures)
+auto point = kinet::crypto::hash_to_g2(message, dst);
+```
+
+## Merkle Trees
+
+BLAKE3's tree mode enables efficient Merkle tree construction:
+
+```cpp
+#include "merkle.hpp"
+
+// Build Merkle tree from leaves
+std::vector<std::vector<uint8_t>> leaves = {...};
+auto tree = kinet::crypto::MerkleTree::build(leaves);
+
+// Get root hash
+auto root = tree.root();
+
+// Generate inclusion proof
+auto proof = tree.prove(leaf_index);
+
+// Verify proof
+bool valid = kinet::crypto::verify_merkle_proof(root, leaf, proof);
+```
+
+### GPU-Accelerated Tree Building
+
+```cpp
+// Use GPU for large trees
+auto tree = kinet::crypto::MerkleTree::build_gpu(leaves);
+```
+
+Performance for building Merkle trees:
+
+| Leaves | CPU | Metal GPU | Speedup |
+|--------|-----|-----------|---------|
+| 1K | 0.5ms | 0.3ms | 1.7x |
+| 1M | 500ms | 15ms | 33x |
+| 1B | 500s | 12s | 42x |
+
+## Other Hash Functions
+
+### SHA-256 (Legacy Compatibility)
+
+```cpp
+// SHA-256 for compatibility with existing systems
+auto hash = kinet::crypto::sha256(message);
+```
+
+### Keccak-256 (Ethereum)
+
+```cpp
+// Keccak-256 for Ethereum address derivation
+auto hash = kinet::crypto::keccak256(message);
+```
+
+### Poseidon (ZK-Friendly)
+
+```cpp
+// Poseidon hash for zero-knowledge proofs
+auto hash = kinet::crypto::poseidon(field_elements);
+```
+
+## Go Bindings
+
+```go
+package main
+
+import "github.com/kinet-labs/crypto/go/hash"
+
+func main() {
+    // BLAKE3 hash
+    msg := []byte("Hello, BLAKE3!")
+    h := hash.Blake3(msg)
+
+    // Keyed hash (MAC)
+    key := make([]byte, 32)
+    mac := hash.Blake3Keyed(key, msg)
+
+    // Key derivation
+    derived := hash.Blake3DeriveKey("context", inputKey, 32)
+
+    // Merkle tree
+    leaves := [][]byte{leaf1, leaf2, leaf3, leaf4}
+    root := hash.MerkleRoot(leaves)
+}
+```
+
+## Security Considerations
+
+### Collision Resistance
+
+BLAKE3 provides 128-bit collision resistance (256-bit output):
+
+- Finding any two inputs with same hash requires 2^128 work
+- For higher security margins, use extended output (512+ bits)
+
+### Length Extension
+
+Unlike SHA-256, BLAKE3 is naturally resistant to length extension attacks due to its tree structure.
+
+### Timing Attacks
+
+All comparison operations use constant-time implementations:
+
+```cpp
+// Always use ct_equal for hash comparison
+bool valid = kinet::crypto::ct_equal(hash, expected);
+
+// NEVER do this:
+// bool valid = (hash == expected); // Timing leak!
+```

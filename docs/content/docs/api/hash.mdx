@@ -1,0 +1,308 @@
+---
+title: Hash API
+description: BLAKE3 and hash function reference
+---
+
+# Hash API Reference
+
+## BLAKE3
+
+### blake3
+
+Compute BLAKE3 hash of input data.
+
+```cpp
+std::array<uint8_t, 32> blake3(std::span<const uint8_t> data);
+
+std::vector<uint8_t> blake3(std::span<const uint8_t> data, size_t output_len);
+```
+
+**Parameters:**
+- `data` - Input bytes to hash
+- `output_len` - Custom output length (optional, default 32)
+
+**Returns:** Hash output
+
+**Example:**
+```cpp
+std::vector<uint8_t> data = {'H', 'e', 'l', 'l', 'o'};
+auto hash = kinet::crypto::blake3(data);
+
+// Extended output
+auto hash_64 = kinet::crypto::blake3(data, 64);
+```
+
+### blake3_keyed
+
+Compute keyed BLAKE3 hash (MAC).
+
+```cpp
+std::array<uint8_t, 32> blake3_keyed(
+    std::span<const uint8_t, 32> key,
+    std::span<const uint8_t> data
+);
+```
+
+**Parameters:**
+- `key` - 32-byte key
+- `data` - Input data
+
+**Returns:** 32-byte MAC
+
+### blake3_derive_key
+
+Derive key material using BLAKE3-KDF.
+
+```cpp
+std::vector<uint8_t> blake3_derive_key(
+    std::string_view context,
+    std::span<const uint8_t> input_key_material,
+    size_t output_len
+);
+```
+
+**Parameters:**
+- `context` - Application-specific context string
+- `input_key_material` - Input key material
+- `output_len` - Desired output length
+
+**Returns:** Derived key bytes
+
+## Blake3Hasher Class
+
+Incremental hashing interface.
+
+```cpp
+class Blake3Hasher {
+public:
+    // Constructor
+    Blake3Hasher();
+
+    // Keyed constructor
+    explicit Blake3Hasher(std::span<const uint8_t, 32> key);
+
+    // Update with data
+    void update(std::span<const uint8_t> data);
+
+    // Finalize and get hash
+    std::array<uint8_t, 32> finalize();
+
+    // Finalize with custom length
+    std::vector<uint8_t> finalize(size_t output_len);
+
+    // Reset for reuse
+    void reset();
+};
+```
+
+**Example:**
+```cpp
+kinet::crypto::Blake3Hasher hasher;
+
+// Process in chunks
+hasher.update(chunk1);
+hasher.update(chunk2);
+hasher.update(chunk3);
+
+// Get result
+auto hash = hasher.finalize();
+```
+
+## GPU-Accelerated Hashing
+
+### blake3_gpu
+
+Compute BLAKE3 using Metal GPU (for large inputs).
+
+```cpp
+std::array<uint8_t, 32> blake3_gpu(std::span<const uint8_t> data);
+```
+
+**Note:** Automatically falls back to CPU for small inputs where GPU overhead outweighs benefits.
+
+### blake3_batch_gpu
+
+Hash multiple inputs in parallel on GPU.
+
+```cpp
+std::vector<std::array<uint8_t, 32>> blake3_batch_gpu(
+    std::span<const std::vector<uint8_t>> inputs
+);
+```
+
+## Other Hash Functions
+
+### sha256
+
+SHA-256 for compatibility.
+
+```cpp
+std::array<uint8_t, 32> sha256(std::span<const uint8_t> data);
+```
+
+### sha512
+
+SHA-512 hash.
+
+```cpp
+std::array<uint8_t, 64> sha512(std::span<const uint8_t> data);
+```
+
+### keccak256
+
+Keccak-256 for Ethereum compatibility.
+
+```cpp
+std::array<uint8_t, 32> keccak256(std::span<const uint8_t> data);
+```
+
+### poseidon
+
+ZK-friendly Poseidon hash over field elements.
+
+```cpp
+FieldElement poseidon(std::span<const FieldElement> inputs);
+```
+
+## Merkle Trees
+
+### MerkleTree Class
+
+```cpp
+class MerkleTree {
+public:
+    // Build tree from leaves
+    static MerkleTree build(std::span<const std::vector<uint8_t>> leaves);
+
+    // GPU-accelerated building
+    static MerkleTree build_gpu(std::span<const std::vector<uint8_t>> leaves);
+
+    // Get root hash
+    std::array<uint8_t, 32> root() const;
+
+    // Generate inclusion proof
+    MerkleProof prove(size_t leaf_index) const;
+
+    // Number of leaves
+    size_t size() const;
+};
+```
+
+### MerkleProof
+
+```cpp
+struct MerkleProof {
+    std::vector<std::array<uint8_t, 32>> siblings;
+    std::vector<bool> path;  // left=false, right=true
+};
+```
+
+### verify_merkle_proof
+
+Verify Merkle inclusion proof.
+
+```cpp
+bool verify_merkle_proof(
+    const std::array<uint8_t, 32>& root,
+    const std::vector<uint8_t>& leaf,
+    const MerkleProof& proof
+);
+```
+
+## Utility Functions
+
+### ct_equal
+
+Constant-time equality comparison.
+
+```cpp
+bool ct_equal(
+    std::span<const uint8_t> a,
+    std::span<const uint8_t> b
+);
+```
+
+### secure_zero
+
+Securely zero memory.
+
+```cpp
+void secure_zero(void* ptr, size_t len);
+```
+
+## C API
+
+```c
+// BLAKE3
+int blake3(
+    const uint8_t* data,
+    size_t data_len,
+    uint8_t* out,
+    size_t out_len
+);
+
+// Keyed BLAKE3
+int blake3_keyed(
+    const uint8_t key[32],
+    const uint8_t* data,
+    size_t data_len,
+    uint8_t out[32]
+);
+
+// Key derivation
+int blake3_derive_key(
+    const char* context,
+    const uint8_t* ikm,
+    size_t ikm_len,
+    uint8_t* out,
+    size_t out_len
+);
+
+// Incremental hasher
+blake3_hasher_t* blake3_hasher_new(void);
+void blake3_hasher_update(blake3_hasher_t* h, const uint8_t* data, size_t len);
+void blake3_hasher_finalize(blake3_hasher_t* h, uint8_t* out, size_t out_len);
+void blake3_hasher_free(blake3_hasher_t* h);
+
+// SHA-256
+int sha256(const uint8_t* data, size_t len, uint8_t out[32]);
+
+// Keccak-256
+int keccak256(const uint8_t* data, size_t len, uint8_t out[32]);
+```
+
+## Go API
+
+```go
+package hash
+
+// Blake3 computes BLAKE3 hash
+func Blake3(data []byte) [32]byte
+
+// Blake3Extended computes BLAKE3 with custom output length
+func Blake3Extended(data []byte, outLen int) []byte
+
+// Blake3Keyed computes keyed BLAKE3 (MAC)
+func Blake3Keyed(key [32]byte, data []byte) [32]byte
+
+// Blake3DeriveKey derives key material
+func Blake3DeriveKey(context string, ikm []byte, outLen int) []byte
+
+// Hasher for incremental hashing
+type Hasher struct { ... }
+
+func NewHasher() *Hasher
+func NewKeyedHasher(key [32]byte) *Hasher
+func (h *Hasher) Write(data []byte) (int, error)
+func (h *Hasher) Sum(b []byte) []byte
+func (h *Hasher) Reset()
+
+// Merkle trees
+func MerkleRoot(leaves [][]byte) [32]byte
+func MerkleProve(leaves [][]byte, index int) MerkleProof
+func MerkleVerify(root [32]byte, leaf []byte, proof MerkleProof) bool
+
+// Legacy hashes
+func SHA256(data []byte) [32]byte
+func Keccak256(data []byte) [32]byte
+```

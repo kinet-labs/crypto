@@ -1,0 +1,140 @@
+---
+title: API Reference
+description: Complete API documentation for kinet-crypto
+---
+
+# API Reference
+
+This section provides comprehensive documentation for all public APIs in kinet-crypto.
+
+## C++ API
+
+### Headers
+
+| Header | Description |
+|--------|-------------|
+| `bls.hpp` | BLS12-381 signatures and pairings |
+| `bn254.hpp` | BN254 curve operations |
+| `mldsa.hpp` | ML-DSA (Dilithium) signatures |
+| `hash.hpp` | BLAKE3 and other hash functions |
+| `kzg.hpp` | KZG polynomial commitments |
+| `merkle.hpp` | Merkle tree operations |
+
+### Namespace Structure
+
+```cpp
+namespace kinet {
+namespace crypto {
+    // All cryptographic primitives
+    namespace bls { ... }
+    namespace mldsa { ... }
+    namespace hash { ... }
+    namespace kzg { ... }
+}
+}
+```
+
+## C API (CGO Bridge)
+
+For Go integration, a C API is provided in `include/crypto_cgo.h`:
+
+```c
+// BLS operations
+int bls_keygen(uint8_t* sk_out, uint8_t* pk_out);
+int bls_sign(const uint8_t* sk, const uint8_t* msg, size_t msg_len, uint8_t* sig_out);
+int bls_verify(const uint8_t* pk, const uint8_t* msg, size_t msg_len, const uint8_t* sig);
+
+// ML-DSA operations
+int mldsa_keygen(int level, uint8_t* sk_out, uint8_t* pk_out);
+int mldsa_sign(const uint8_t* sk, const uint8_t* msg, size_t msg_len, uint8_t* sig_out);
+int mldsa_verify(const uint8_t* pk, const uint8_t* msg, size_t msg_len, const uint8_t* sig);
+
+// Hashing
+int blake3(const uint8_t* data, size_t len, uint8_t* out, size_t out_len);
+```
+
+## Go Bindings
+
+Full Go bindings are provided in the `go/` subdirectory:
+
+```go
+import (
+    "github.com/kinet-labs/crypto/go/bls"
+    "github.com/kinet-labs/crypto/go/mldsa"
+    "github.com/kinet-labs/crypto/go/hash"
+    "github.com/kinet-labs/crypto/go/kzg"
+)
+```
+
+## Error Handling
+
+### C++ Exceptions
+
+```cpp
+try {
+    auto sig = kinet::crypto::bls_sign(sk, message);
+} catch (const kinet::crypto::InvalidKeyError& e) {
+    // Handle invalid key
+} catch (const kinet::crypto::CryptoError& e) {
+    // Handle generic crypto error
+}
+```
+
+### C API Return Codes
+
+| Code | Meaning |
+|------|---------|
+| 0 | Success |
+| -1 | Invalid argument |
+| -2 | Verification failed |
+| -3 | Serialization error |
+| -4 | GPU error |
+
+### Go Errors
+
+```go
+sig, err := bls.Sign(sk, msg)
+if err != nil {
+    // Handle error
+}
+```
+
+## Thread Safety
+
+All kinet-crypto operations are thread-safe. Internal state uses appropriate synchronization:
+
+```cpp
+// Safe to call from multiple threads
+auto sig1 = kinet::crypto::bls_sign(sk, msg1); // Thread 1
+auto sig2 = kinet::crypto::bls_sign(sk, msg2); // Thread 2
+```
+
+## Memory Management
+
+### C++ RAII
+
+```cpp
+// Automatic cleanup with RAII
+{
+    auto [sk, pk] = kinet::crypto::bls_keygen();
+    // Use keys...
+} // Keys securely erased on scope exit
+```
+
+### C API
+
+```c
+// Caller owns allocated memory
+uint8_t sk[32], pk[48];
+bls_keygen(sk, pk);
+
+// Secure erase when done
+secure_zero(sk, 32);
+```
+
+## API Sections
+
+- [BLS API](/docs/api/bls) - BLS12-381 function reference
+- [ML-DSA API](/docs/api/mldsa) - ML-DSA function reference
+- [Hash API](/docs/api/hash) - BLAKE3 and hash function reference
+- [KZG API](/docs/api/kzg) - KZG commitment function reference

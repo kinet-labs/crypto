@@ -1,0 +1,4 @@
+{
+  "title": "API Reference",
+  "pages": ["bls", "mldsa", "hash", "kzg"]
+}

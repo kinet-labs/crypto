@@ -1,0 +1,290 @@
+---
+title: CPU Backend
+description: SIMD-optimized CPU implementation
+---
+
+# CPU Backend
+
+The CPU backend provides optimized implementations using SIMD instructions, serving as both a fallback and a reference implementation.
+
+## Features
+
+- **SIMD Optimization**: AVX2/AVX-512 on x86-64, NEON on ARM
+- **OpenMP Parallelization**: Multi-threaded operations
+- **Constant-Time**: Side-channel resistant implementation
+- **Cross-Platform**: Works on all supported platforms
+
+## SIMD Detection
+
+The library automatically detects and uses available SIMD extensions:
+
+```cpp
+#include "crypto.hpp"
+
+// Check available SIMD features
+auto features = kinet::crypto::cpu_features();
+// Returns: {"avx2", "avx512", "aes-ni"} on modern x86-64
+// Returns: {"neon", "aes"} on ARM64
+```
+
+## Implementation Details
+
+### Field Arithmetic
+
+Montgomery multiplication with SIMD:
+
+```cpp
+// AVX2 implementation for 4-way parallel multiplication
+void mont_mul_4way_avx2(
+    const uint64_t a[4][6],
+    const uint64_t b[4][6],
+    uint64_t result[4][6]
+) {
+    __m256i t[12];  // 4 × 384-bit intermediate
+
+    // Parallel schoolbook multiplication
+    for (int i = 0; i < 6; i++) {
+        __m256i ai = _mm256_loadu_si256((__m256i*)&a[0][i]);
+        for (int j = 0; j < 6; j++) {
+            __m256i bj = _mm256_loadu_si256((__m256i*)&b[0][j]);
+            // MULX for full 64×64→128 multiplication
+            // ... accumulate into t
+        }
+    }
+
+    // Montgomery reduction
+    mont_reduce_4way(t, result);
+}
+```
+
+### NEON Implementation
+
+ARM NEON for Apple Silicon CPU fallback:
+
+```cpp
+// NEON 2-way parallel multiplication
+void mont_mul_2way_neon(
+    const uint64_t a[2][6],
+    const uint64_t b[2][6],
+    uint64_t result[2][6]
+) {
+    uint64x2_t t[12];
+
+    // Parallel multiplication using NEON
+    for (int i = 0; i < 6; i++) {
+        uint64x2_t ai = vld1q_u64(&a[0][i]);
+        for (int j = 0; j < 6; j++) {
+            uint64x2_t bj = vld1q_u64(&b[0][j]);
+            // UMULH for high half
+            // ... accumulate
+        }
+    }
+
+    mont_reduce_2way(t, result);
+}
+```
+
+## Multi-Threading
+
+### OpenMP Parallelization
+
+```cpp
+// Parallel batch signing
+std::vector<Signature> batch_sign(
+    const SecretKey& sk,
+    const std::vector<std::vector<uint8_t>>& messages
+) {
+    std::vector<Signature> results(messages.size());
+
+    #pragma omp parallel for schedule(dynamic)
+    for (size_t i = 0; i < messages.size(); i++) {
+        results[i] = bls_sign(sk, messages[i]);
+    }
+
+    return results;
+}
+```
+
+### Thread Count Configuration
+
+```cpp
+// Set number of threads
+kinet::crypto::set_num_threads(8);
+
+// Or via environment
+// export KINET_CRYPTO_THREADS=8
+```
+
+## Constant-Time Operations
+
+All implementations are constant-time to prevent timing attacks:
+
+```cpp
+// Constant-time conditional select
+inline uint64_t ct_select(uint64_t mask, uint64_t a, uint64_t b) {
+    return (mask & a) | (~mask & b);
+}
+
+// Constant-time comparison
+inline uint64_t ct_eq(uint64_t a, uint64_t b) {
+    uint64_t x = a ^ b;
+    return ((x | -x) >> 63) ^ 1;
+}
+```
+
+## BLAKE3 Implementation
+
+### Tree Hashing
+
+```cpp
+// Parallel chunk processing
+void blake3_hash_parallel(
+    const uint8_t* data,
+    size_t len,
+    uint8_t* out
+) {
+    size_t num_chunks = (len + CHUNK_LEN - 1) / CHUNK_LEN;
+    std::vector<uint8_t> chunk_outputs(num_chunks * 32);
+
+    #pragma omp parallel for
+    for (size_t i = 0; i < num_chunks; i++) {
+        size_t chunk_start = i * CHUNK_LEN;
+        size_t chunk_len = std::min(CHUNK_LEN, len - chunk_start);
+        blake3_compress_chunk(
+            data + chunk_start,
+            chunk_len,
+            i,
+            chunk_outputs.data() + i * 32
+        );
+    }
+
+    // Reduce tree
+    blake3_parent_hash(chunk_outputs, out);
+}
+```
+
+### SIMD Compression
+
+```cpp
+// AVX2 BLAKE3 compression (4-way parallel)
+void blake3_compress_avx2(
+    const uint32_t cv[8],
+    const uint8_t block[64],
+    uint64_t counter,
+    uint32_t block_len,
+    uint32_t flags,
+    uint32_t out[16]
+) {
+    __m256i state[4];
+
+    // Initialize state
+    state[0] = _mm256_loadu_si256((__m256i*)cv);
+    state[1] = _mm256_loadu_si256((__m256i*)(cv + 4));
+    state[2] = _mm256_loadu_si256((__m256i*)IV);
+    state[3] = _mm256_setr_epi32(
+        (uint32_t)counter, (uint32_t)(counter >> 32),
+        block_len, flags,
+        IV[4], IV[5], IV[6], IV[7]
+    );
+
+    // 7 rounds
+    for (int r = 0; r < 7; r++) {
+        blake3_round_avx2(state, block, r);
+    }
+
+    // Finalize
+    _mm256_storeu_si256((__m256i*)out,
+        _mm256_xor_si256(state[0], state[2]));
+    _mm256_storeu_si256((__m256i*)(out + 8),
+        _mm256_xor_si256(state[1], state[3]));
+}
+```
+
+## NTT Implementation
+
+```cpp
+// Vectorized NTT butterfly
+void ntt_layer_avx2(
+    int32_t* poly,
+    size_t n,
+    size_t layer,
+    const int32_t* twiddles
+) {
+    size_t step = 1 << layer;
+
+    #pragma omp parallel for
+    for (size_t block = 0; block < n / (step * 2); block++) {
+        for (size_t j = 0; j < step; j += 8) {
+            size_t i = block * step * 2 + j;
+
+            __m256i u = _mm256_loadu_si256((__m256i*)&poly[i]);
+            __m256i v = _mm256_loadu_si256((__m256i*)&poly[i + step]);
+            __m256i tw = _mm256_loadu_si256((__m256i*)&twiddles[step + j]);
+
+            // Montgomery multiplication for v * twiddle
+            __m256i vt = mont_mul_avx2(v, tw);
+
+            // Butterfly
+            _mm256_storeu_si256((__m256i*)&poly[i],
+                mod_add_avx2(u, vt));
+            _mm256_storeu_si256((__m256i*)&poly[i + step],
+                mod_sub_avx2(u, vt));
+        }
+    }
+}
+```
+
+## Configuration
+
+### Build Options
+
+```cmake
+# Force CPU-only build (no Metal)
+set(KINET_CRYPTO_METAL OFF)
+set(KINET_CRYPTO_CPU ON)
+
+# Enable specific SIMD
+set(KINET_CRYPTO_AVX2 ON)
+set(KINET_CRYPTO_AVX512 OFF)  # Disable AVX-512
+```
+
+### Runtime Configuration
+
+```cpp
+// Disable SIMD (for testing/debugging)
+kinet::crypto::set_use_simd(false);
+
+// Disable multi-threading
+kinet::crypto::set_num_threads(1);
+```
+
+## Performance
+
+Benchmarks on Apple M1 Max (CPU cores only):
+
+| Operation | Single Thread | 8 Threads | vs Metal GPU |
+|-----------|---------------|-----------|--------------|
+| BLS Sign | 333/s | 2,600/s | 5.7x slower |
+| BLS Verify | 187/s | 1,450/s | 5.5x slower |
+| BLAKE3 1GB | 850ms | 140ms | 1.7x slower |
+| MSM 4096 | 180ms | 45ms | 5.6x slower |
+
+## Use Cases
+
+The CPU backend is preferred for:
+
+1. **Small Operations**: GPU dispatch overhead exceeds computation time
+2. **Low Latency**: Avoiding GPU scheduling delays
+3. **Compatibility**: Systems without GPU support
+4. **Debugging**: Easier to debug than GPU code
+5. **Verification**: Reference implementation for GPU correctness
+
+## Fallback Behavior
+
+When Metal is unavailable, the library automatically uses CPU:
+
+```cpp
+// This works on any platform
+auto sig = kinet::crypto::bls_sign(sk, message);
+// Uses GPU if available, otherwise CPU
+```

@@ -1,0 +1,49 @@
+---
+title: Backends
+description: GPU and CPU backend implementations for kinet-crypto
+---
+
+# Backends
+
+kinet-crypto supports multiple compute backends to leverage available hardware acceleration:
+
+| Backend | Platform | Use Case |
+|---------|----------|----------|
+| **Metal** | Apple Silicon | GPU acceleration on macOS/iOS |
+| **CUDA** | NVIDIA GPUs | GPU acceleration on Linux/Windows |
+| **CPU** | All platforms | Fallback and compatibility |
+
+## Backend Selection
+
+The library automatically selects the optimal backend based on available hardware:
+
+```cpp
+#include "crypto.hpp"
+
+// Check available backends
+auto backends = kinet::crypto::available_backends();
+// Returns: {"metal", "cpu"} on Apple Silicon
+
+// Force specific backend
+kinet::crypto::set_backend("metal");  // Use GPU
+kinet::crypto::set_backend("cpu");    // Use CPU only
+```
+
+## Performance Comparison
+
+Benchmarks on Apple M1 Max:
+
+| Operation | CPU | Metal GPU | Speedup |
+|-----------|-----|-----------|---------|
+| BLS Sign | 3,000/s | 15,000/s | 5x |
+| BLS Verify | 1,500/s | 8,000/s | 5.3x |
+| MSM (4096 pts) | 180ms | 8ms | 22x |
+| BLAKE3 (1GB) | 1.2s | 0.08s | 15x |
+| ML-DSA-65 Sign | 5,000/s | 25,000/s | 5x |
+| KZG Commit (4K) | 45ms | 3ms | 15x |
+
+## Backend Documentation
+
+- [Metal Backend](/docs/backends/metal) - Apple Silicon GPU acceleration
+- [CUDA Backend](/docs/backends/cuda) - NVIDIA GPU acceleration
+- [CPU Backend](/docs/backends/cpu) - SIMD-optimized CPU implementation

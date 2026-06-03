@@ -1,114 +1,130 @@
-# Kinet Crypto - Cryptographic Primitives
+# kinet-labs/crypto - canonical native + GPU crypto
 
-**Last Updated**: 2025-12-30
+**Last Updated**: 2026-04-26
 **Module**: `kinet-labs/crypto`
-**Role**: GPU-accelerated cryptographic primitives
+**Role**: First-party CPU + GPU cryptographic primitives. Single source of
+truth for every algorithm consumed by Go (kinet-labs/crypto), Rust, C++, and
+Metal/CUDA/WGSL.
 
-## Architecture Position
+## Layout
 
-```
-kinet-labs/gpu      ← Foundation (optional MLX backend)
-    ▲
-    │
-kinet-labs/crypto   ← YOU ARE HERE (BLS, ML-DSA, hashing)
-    │
-    ▼
-kinet-labs/lattice  ← NTT operations for ML-DSA
-```
-
-**Depends on:**
-- `kinet-labs/lattice` (for ML-DSA NTT operations)
-- `kinet-labs/gpu` (optional, for MLX backend)
-- Metal framework (macOS, for BLS12-381 compute shaders)
-
-## Overview
-
-C++ library providing GPU-accelerated:
-- **BLS12-381**: Pairing-based signatures with Metal compute shaders
-- **ML-DSA**: Post-quantum signatures (Dilithium) with NTT acceleration
-- **Hashing**: SHA3-256, SHA3-512, BLAKE3
-- **Threshold**: Shamir secret sharing, threshold signatures
-
-## GPU Acceleration
-
-### Metal BLS12-381 Shaders (macOS)
-
-Native Metal compute shaders for elliptic curve operations:
-
-| Kernel | Description | Parallelism |
-|--------|-------------|-------------|
-| `g1_batch_add` | Parallel point addition | Per-point |
-| `g1_batch_double` | Parallel point doubling | Per-point |
-| `g1_batch_scalar_mul` | Parallel scalar multiplication | Per-point |
-| `bls_batch_verify_msm` | Multi-scalar multiplication for batch verification | Threadgroup reduction |
-
-**Performance target**: 8+ signatures for GPU dispatch (below that, CPU is faster).
-
-### Architecture
+One directory per algorithm, identical shape:
 
 ```
-bls12_381.metal     ← Metal compute shaders (G1 arithmetic)
-    ↓
-metal_bls.mm        ← Objective-C++ Metal API wrapper
-    ↓
-crypto.cpp          ← C++ API with automatic GPU dispatch
-    ↓
-crypto.h            ← Public C API
+kinet-labs/crypto/
+  c-abi/
+    kinet_crypto.h            public umbrella header (Go cgo + Rust bindgen)
+    c_kinet_crypto.cpp        top-level dispatcher (GPU control + version)
+  include/kinet/crypto/
+    keccak.h                first-party per-algorithm public headers
+    secp256k1.h
+    u256.h
+  cmake/
+    KinetAlgorithm.cmake      kinet_add_algorithm() helper
+  <alg>/
+    CMakeLists.txt          uses kinet_add_algorithm(NAME ...)
+    cpp/                    first-party CPU implementation
+    gpu/cuda/               *.cu kernels (Phase 3+ for most algorithms)
+    gpu/metal/              *.metal kernels + *_driver.{h,mm}
+    gpu/wgsl/               *.wgsl kernels (Phase 3+)
+    c-abi/c_<alg>.{h,cpp}   algorithm-internal C ABI shim (extern "C")
+    test/<alg>_test.cpp
+    test/<alg>_gpu_test.cpp
+    test/<alg>_determinism_test.cpp
+    test/vectors/
 ```
+
+## Algorithms (28)
+
+| # | Name | CPU body | Metal driver | C-ABI shim |
+|---|------|----------|--------------|------------|
+| 1 | aead | placeholder | -- | stub |
+| 2 | blake2b | full (RFC 7693, on cevm compress) | -- | live |
+| 3 | blake3 | placeholder | live | stub |
+| 4 | bls | placeholder (cevm body needs intx+blst) | live | stub |
+| 5 | bn254 | placeholder (cevm body needs intx) | live | stub |
+| 6 | cggmp21 | placeholder | -- | stub |
+| 7 | ed25519 | placeholder | -- | stub |
+| 8 | evm256 | placeholder | -- | stub |
+| 9 | frost | placeholder | -- | stub |
+| 10 | ipa | placeholder | live | stub |
+| 11 | **keccak** | **first-party** | -- | live (batch) |
+| 12 | kzg | placeholder (cevm body needs blst) | -- | stub |
+| 13 | lamport | placeholder | live | stub |
+| 14 | mldsa | placeholder | live | stub |
+| 15 | mlkem | placeholder | live | stub |
+| 16 | modexp | placeholder (cevm body needs intx) | -- | stub |
+| 17 | ntt | placeholder | -- | stub |
+| 18 | pedersen | placeholder | -- | stub |
+| 19 | poly_mul | placeholder | -- | stub |
+| 20 | poseidon | placeholder | live | stub |
+| 21 | ringtail | placeholder | -- | stub |
+| 22 | ripemd160 | full (cevm body, namespaceable) | -- | live |
+| 23 | **secp256k1** | **first-party (ecrecover)** | live (placeholder) | live (recover wrapper) |
+| 24 | secp256r1 | placeholder (cevm body needs intx) | -- | stub |
+| 25 | sha256 | full (cevm body, namespaceable) | -- | live |
+| 26 | slhdsa | placeholder | live | stub |
+| 27 | sr25519 | placeholder | -- | stub |
+| 28 | verkle | placeholder | -- | stub |
+
+"first-party" = algorithm body authored under kinet-labs/crypto with no third-party
+crypto library. "cevm body" = source file relocated from
+`kinet-labs/cevm/lib/cevm_precompiles/`; those compile against `intx` and
+sometimes `blst`. Phase 3 ports them to first-party.
 
 ## Build
 
 ```bash
-cd /Users/z/work/kinet-labs/crypto
-mkdir -p build && cd build
-
-# Metal BLS acceleration (recommended on macOS)
-cmake -DWITH_METAL=ON ..
-make -j$(sysctl -n hw.ncpu)
-
-# With MLX GPU backend (requires kinet-labs/gpu built first)
-cmake -DWITH_METAL=ON -DWITH_GPU=ON -DGPU_ROOT=../gpu ..
-make -j$(sysctl -n hw.ncpu)
-
-# CPU only
-cmake -DWITH_METAL=OFF ..
-make -j$(sysctl -n hw.ncpu)
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
+cmake --build build -j
+ctest --test-dir build --output-on-failure
 ```
 
-## Dependencies
+CMake options:
+- `KINET_CRYPTO_ENABLE_CUDA=ON` (default OFF)
+- `KINET_CRYPTO_ENABLE_METAL=ON` (forced ON on Apple)
+- `KINET_CRYPTO_ENABLE_WGSL=ON` (default OFF; drivers ship Phase 3+)
+- `KINET_CRYPTO_BUILD_TESTS=ON` (default ON)
 
-| Dependency | Required | Purpose |
-|------------|----------|---------|
-| `kinet-labs/lattice` | Required | NTT operations for ML-DSA |
-| `kinet-labs/gpu` | Optional | MLX backend |
-| Metal framework | macOS | BLS12-381 compute shaders |
-| Foundation/Security | macOS | Apple frameworks |
+## Public ABI
 
-## Downstream Dependencies
+`#include <kinet_crypto.h>` -- one header, every symbol:
 
-| Package | Uses For |
-|---------|----------|
-| `kinet/crypto` | Via CGO bridge |
-| `kinet/threshold` | BLS threshold signatures |
+- Hashes: `kinet_keccak256`, `kinet_sha256`, `kinet_blake2b`, `kinet_blake3`, `kinet_ripemd160`
+- AEAD: `kinet_aead_chacha20poly1305_*`
+- EC: `kinet_secp256k1_*`, `kinet_secp256r1_*`, `kinet_ed25519_*`, `kinet_sr25519_*`
+- Pairings: `kinet_bn254_*`, `kinet_bls_*`
+- KZG: `kinet_kzg_*`
+- PQ: `kinet_mldsa_*`, `kinet_mlkem_*`, `kinet_slhdsa_*`
+- Threshold: `kinet_frost_*`, `kinet_cggmp21_*`, `kinet_ringtail_*`
+- ZK: `kinet_ipa_*`, `kinet_lamport_*`, `kinet_pedersen_*`, `kinet_poseidon_*`, `kinet_verkle_*`
+- Bigint: `kinet_modexp`, `kinet_evm256_*`
+- NTT: `kinet_ntt_*`, `kinet_poly_mul`
+- Control: `kinet_crypto_gpu_{available,set_default,get_default}`, `kinet_crypto_version`
 
-## Key Files
+## Phase plan
 
-| File | Purpose |
-|------|---------|
-| `src/metal/bls12_381.metal` | Metal compute shaders for G1 arithmetic |
-| `src/metal_bls.mm` | Metal API wrapper (Objective-C++) |
-| `include/metal_bls.h` | Metal BLS C interface |
-| `src/crypto.cpp` | Main implementation with GPU dispatch |
-| `include/crypto.h` | Public C API |
+- Phase 1 (this commit): canonical layout + 28 algorithm directories + unified
+  C ABI header + per-algorithm CMakeLists.txt + first-party keccak and
+  secp256k1 tests passing.
+- Phase 3: port the cevm bodies (intx + blst dependencies) to first-party
+  implementations under each `<alg>/cpp/`. Implement non-stub C-ABI shims for
+  every placeholder.
+- Phase 4: rewire downstream consumers (kinet-labs/crypto cgo, hanzo/node, zoo/node,
+  kinet/node) to consume the unified `kinet_crypto.h` surface.
+- Phase 5: delete `kinet-labs/cevm/lib/cevm_precompiles/` and `kinet-labs/gpu/kernels/`
+  after every consumer is on the new path.
 
-## Rules for AI Assistants
+## Rules
 
-1. **ALWAYS** use `-DWITH_METAL=ON` on macOS for GPU acceleration
-2. Build `kinet-labs/lattice` first (required for ML-DSA)
-3. Build `kinet-labs/gpu` first if enabling WITH_GPU
-4. Test BLS batch operations with >= 8 signatures to trigger GPU path
-5. Metal shaders compile to `.metallib` at build time
+1. No vendoring. No third-party crypto library. Every byte is authored here.
+2. GPU output must be byte-equal to CPU output. Determinism tests prove it.
+3. Stub C-ABI shims return `KINET_ERR_NOTIMPL`. They are not exercised by tests.
+4. One way to do everything: a caller never has to choose between two
+   identical-looking entry points.
+5. Originals at `kinet-labs/cevm/lib/cevm_precompiles/` and `kinet-labs/gpu/kernels/`
+   stay until Phase 5 sweeps them.
 
 ---
 
-*This file is symlinked as AGENTS.md, CLAUDE.md*
+*Symlinked as AGENTS.md, CLAUDE.md.*

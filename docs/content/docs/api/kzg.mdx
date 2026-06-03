@@ -1,0 +1,362 @@
+---
+title: KZG API
+description: KZG polynomial commitment function reference
+---
+
+# KZG API Reference
+
+## Types
+
+### SRS (Structured Reference String)
+
+```cpp
+class SRS {
+public:
+    // Load from file
+    static SRS load(const std::filesystem::path& path);
+
+    // Load from bytes
+    static SRS from_bytes(std::span<const uint8_t> bytes);
+
+    // Generate for testing (NOT secure for production!)
+    static SRS generate_test(size_t max_degree);
+
+    // Maximum polynomial degree supported
+    size_t max_degree() const;
+
+    // Serialize
+    std::vector<uint8_t> to_bytes() const;
+};
+```
+
+### Polynomial
+
+```cpp
+class Polynomial {
+public:
+    // Construct from coefficients
+    explicit Polynomial(std::vector<Scalar> coefficients);
+
+    // Construct from evaluations (Lagrange basis)
+    static Polynomial from_evaluations(std::vector<Scalar> evals);
+
+    // Evaluate at point
+    Scalar evaluate(const Scalar& x) const;
+
+    // Degree
+    size_t degree() const;
+
+    // Coefficients access
+    const std::vector<Scalar>& coefficients() const;
+};
+```
+
+### KZGCommitment
+
+```cpp
+class KZGCommitment {
+public:
+    static constexpr size_t SIZE = 48;
+
+    // Constructors
+    static KZGCommitment from_bytes(std::span<const uint8_t, 48> bytes);
+
+    // Serialization
+    std::array<uint8_t, 48> to_bytes() const;
+
+    // Equality
+    bool operator==(const KZGCommitment& other) const;
+};
+```
+
+### KZGProof
+
+```cpp
+class KZGProof {
+public:
+    static constexpr size_t SIZE = 48;
+
+    // Constructors
+    static KZGProof from_bytes(std::span<const uint8_t, 48> bytes);
+
+    // Serialization
+    std::array<uint8_t, 48> to_bytes() const;
+};
+```
+
+## Core Functions
+
+### kzg_commit
+
+Commit to a polynomial.
+
+```cpp
+KZGCommitment kzg_commit(
+    const SRS& srs,
+    const Polynomial& poly
+);
+```
+
+**Parameters:**
+- `srs` - Structured reference string
+- `poly` - Polynomial to commit
+
+**Returns:** KZG commitment
+
+### kzg_open
+
+Generate opening proof at a point.
+
+```cpp
+std::pair<KZGProof, Scalar> kzg_open(
+    const SRS& srs,
+    const Polynomial& poly,
+    const Scalar& z
+);
+```
+
+**Parameters:**
+- `srs` - Structured reference string
+- `poly` - Committed polynomial
+- `z` - Evaluation point
+
+**Returns:** Tuple of (proof, evaluation y = f(z))
+
+### kzg_verify
+
+Verify an opening proof.
+
+```cpp
+bool kzg_verify(
+    const SRS& srs,
+    const KZGCommitment& commitment,
+    const Scalar& z,
+    const Scalar& y,
+    const KZGProof& proof
+);
+```
+
+**Parameters:**
+- `srs` - Structured reference string
+- `commitment` - Polynomial commitment
+- `z` - Evaluation point
+- `y` - Claimed evaluation
+- `proof` - Opening proof
+
+**Returns:** `true` if proof is valid
+
+## Batch Operations
+
+### kzg_commit_batch
+
+Commit to multiple polynomials (parallelized).
+
+```cpp
+std::vector<KZGCommitment> kzg_commit_batch(
+    const SRS& srs,
+    std::span<const Polynomial> polys
+);
+```
+
+### kzg_verify_batch
+
+Verify multiple openings efficiently.
+
+```cpp
+bool kzg_verify_batch(
+    const SRS& srs,
+    std::span<const KZGCommitment> commitments,
+    std::span<const Scalar> points,
+    std::span<const Scalar> evaluations,
+    std::span<const KZGProof> proofs
+);
+```
+
+## EIP-4844 Blob Functions
+
+### blob_to_kzg_commitment
+
+Compute commitment to a blob.
+
+```cpp
+KZGCommitment blob_to_kzg_commitment(
+    const SRS& srs,
+    std::span<const Scalar, 4096> blob
+);
+```
+
+### compute_kzg_proof
+
+Compute proof for blob at point.
+
+```cpp
+std::pair<KZGProof, Scalar> compute_kzg_proof(
+    const SRS& srs,
+    std::span<const Scalar, 4096> blob,
+    const Scalar& z
+);
+```
+
+### compute_blob_kzg_proof
+
+Compute blob proof (EIP-4844 format).
+
+```cpp
+KZGProof compute_blob_kzg_proof(
+    const SRS& srs,
+    std::span<const Scalar, 4096> blob,
+    const KZGCommitment& commitment
+);
+```
+
+### verify_blob_kzg_proof
+
+Verify blob proof.
+
+```cpp
+bool verify_blob_kzg_proof(
+    const SRS& srs,
+    std::span<const Scalar, 4096> blob,
+    const KZGCommitment& commitment,
+    const KZGProof& proof
+);
+```
+
+### verify_blob_kzg_proof_batch
+
+Verify multiple blob proofs.
+
+```cpp
+bool verify_blob_kzg_proof_batch(
+    const SRS& srs,
+    std::span<const std::array<Scalar, 4096>> blobs,
+    std::span<const KZGCommitment> commitments,
+    std::span<const KZGProof> proofs
+);
+```
+
+## GPU Functions
+
+### kzg_commit_gpu
+
+GPU-accelerated commitment.
+
+```cpp
+KZGCommitment kzg_commit_gpu(
+    const SRS& srs,
+    const Polynomial& poly
+);
+```
+
+### kzg_commit_batch_gpu
+
+Batch commitments on GPU.
+
+```cpp
+std::vector<KZGCommitment> kzg_commit_batch_gpu(
+    const SRS& srs,
+    std::span<const Polynomial> polys
+);
+```
+
+## FFT Operations
+
+### fft
+
+Forward FFT (coefficient to evaluation form).
+
+```cpp
+std::vector<Scalar> fft(std::span<const Scalar> coeffs);
+```
+
+### ifft
+
+Inverse FFT (evaluation to coefficient form).
+
+```cpp
+std::vector<Scalar> ifft(std::span<const Scalar> evals);
+```
+
+### fft_gpu / ifft_gpu
+
+GPU-accelerated FFT.
+
+```cpp
+std::vector<Scalar> fft_gpu(std::span<const Scalar> coeffs);
+std::vector<Scalar> ifft_gpu(std::span<const Scalar> evals);
+```
+
+## C API
+
+```c
+// SRS management
+kzg_srs_t* kzg_srs_load(const char* path);
+kzg_srs_t* kzg_srs_generate_test(size_t max_degree);
+void kzg_srs_free(kzg_srs_t* srs);
+
+// Commitment
+int kzg_commit(
+    const kzg_srs_t* srs,
+    const uint8_t* coeffs,
+    size_t num_coeffs,
+    uint8_t commitment_out[48]
+);
+
+// Opening
+int kzg_open(
+    const kzg_srs_t* srs,
+    const uint8_t* coeffs,
+    size_t num_coeffs,
+    const uint8_t z[32],
+    uint8_t proof_out[48],
+    uint8_t y_out[32]
+);
+
+// Verification
+int kzg_verify(
+    const kzg_srs_t* srs,
+    const uint8_t commitment[48],
+    const uint8_t z[32],
+    const uint8_t y[32],
+    const uint8_t proof[48]
+);
+
+// Blob operations
+int blob_to_kzg_commitment(
+    const kzg_srs_t* srs,
+    const uint8_t blob[4096 * 32],
+    uint8_t commitment_out[48]
+);
+```
+
+## Go API
+
+```go
+package kzg
+
+// SRS management
+type SRS struct { ... }
+
+func LoadSRS(path string) (*SRS, error)
+func GenerateTestSRS(maxDegree int) *SRS
+
+// Polynomial
+type Polynomial struct { ... }
+
+func NewPolynomial(coeffs []Scalar) Polynomial
+func (p Polynomial) Evaluate(z Scalar) Scalar
+
+// Core operations
+func Commit(srs *SRS, poly Polynomial) Commitment
+func Open(srs *SRS, poly Polynomial, z Scalar) (Proof, Scalar)
+func Verify(srs *SRS, c Commitment, z, y Scalar, proof Proof) bool
+
+// Batch operations
+func CommitBatch(srs *SRS, polys []Polynomial) []Commitment
+func VerifyBatch(srs *SRS, cs []Commitment, zs, ys []Scalar, proofs []Proof) bool
+
+// Blob operations (EIP-4844)
+func BlobToCommitment(srs *SRS, blob [4096]Scalar) Commitment
+func ComputeBlobProof(srs *SRS, blob [4096]Scalar, c Commitment) Proof
+func VerifyBlobProof(srs *SRS, blob [4096]Scalar, c Commitment, proof Proof) bool
+```

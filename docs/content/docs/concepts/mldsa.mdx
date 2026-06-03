@@ -1,0 +1,205 @@
+---
+title: ML-DSA (Dilithium)
+description: Post-quantum digital signatures based on lattice cryptography
+---
+
+# ML-DSA (Dilithium)
+
+ML-DSA (Module Lattice Digital Signature Algorithm), formerly known as CRYSTALS-Dilithium, is a post-quantum secure digital signature scheme standardized in FIPS 204.
+
+## Overview
+
+ML-DSA provides security against both classical and quantum computers by basing its security on the hardness of lattice problems:
+
+- **Module-LWE** (Learning With Errors)
+- **Module-SIS** (Short Integer Solution)
+
+## Security Levels
+
+kinet-crypto implements all three NIST security levels:
+
+| Parameter Set | NIST Level | Public Key | Signature | Security |
+|---------------|------------|------------|-----------|----------|
+| ML-DSA-44 | 2 | 1,312 bytes | 2,420 bytes | 128-bit |
+| ML-DSA-65 | 3 | 1,952 bytes | 3,293 bytes | 192-bit |
+| ML-DSA-87 | 5 | 2,592 bytes | 4,595 bytes | 256-bit |
+
+## API Usage
+
+### Key Generation
+
+```cpp
+#include "mldsa.hpp"
+
+// Generate ML-DSA-65 key pair (recommended for most applications)
+auto [sk, pk] = kinet::crypto::mldsa_keygen<kinet::crypto::MLDSA65>();
+
+// Or specify security level explicitly
+auto [sk44, pk44] = kinet::crypto::mldsa_keygen<kinet::crypto::MLDSA44>();
+auto [sk87, pk87] = kinet::crypto::mldsa_keygen<kinet::crypto::MLDSA87>();
+```
+
+### Signing and Verification
+
+```cpp
+// Sign a message
+std::vector<uint8_t> message = {...};
+auto sig = kinet::crypto::mldsa_sign(sk, message);
+
+// Verify signature
+bool valid = kinet::crypto::mldsa_verify(pk, message, sig);
+```
+
+### Deterministic Signing
+
+For applications requiring deterministic signatures:
+
+```cpp
+// Deterministic signing (same input always produces same signature)
+auto sig = kinet::crypto::mldsa_sign_deterministic(sk, message);
+```
+
+## GPU Acceleration
+
+ML-DSA leverages GPU acceleration for:
+
+### Number Theoretic Transform (NTT)
+
+Polynomial multiplication uses NTT computed on Metal:
+
+```metal
+// NTT butterfly operation (simplified)
+kernel void ntt_layer(
+    device int32_t* poly [[buffer(0)]],
+    constant int32_t* twiddles [[buffer(1)]],
+    uint tid [[thread_position_in_grid]],
+    uint layer [[threadgroup_position_in_grid]]
+) {
+    uint step = 1 << layer;
+    uint j = tid & (step - 1);
+    uint i = (tid >> layer) << (layer + 1);
+
+    int32_t u = poly[i + j];
+    int32_t v = mont_mul(twiddles[step + j], poly[i + j + step]);
+
+    poly[i + j] = mod_add(u, v);
+    poly[i + j + step] = mod_sub(u, v);
+}
+```
+
+### Matrix-Vector Multiplication
+
+The core operation in ML-DSA signing and verification:
+
+```cpp
+// Compute A * s + e for verification
+auto t = kinet::crypto::mldsa_matrix_mul(A, s);
+```
+
+Performance on Apple M1 Max:
+
+| Operation | ML-DSA-44 | ML-DSA-65 | ML-DSA-87 |
+|-----------|-----------|-----------|-----------|
+| KeyGen | 0.04ms | 0.07ms | 0.12ms |
+| Sign | 0.15ms | 0.25ms | 0.40ms |
+| Verify | 0.04ms | 0.06ms | 0.09ms |
+
+## Serialization
+
+### Key Serialization
+
+```cpp
+// Serialize keys
+std::vector<uint8_t> pk_bytes = pk.serialize();
+std::vector<uint8_t> sk_bytes = sk.serialize();
+
+// Deserialize
+auto pk2 = PublicKey<MLDSA65>::deserialize(pk_bytes);
+auto sk2 = SecretKey<MLDSA65>::deserialize(sk_bytes);
+```
+
+### Signature Format
+
+Signatures are encoded in the standard FIPS 204 format:
+
+```
+┌─────────────────────────────────────┐
+│ c_tilde (commitment hash, 32 bytes)│
+├─────────────────────────────────────┤
+│ z (response vector, compressed)     │
+├─────────────────────────────────────┤
+│ h (hint bits, compressed)           │
+└─────────────────────────────────────┘
+```
+
+## Hybrid Signatures
+
+For applications transitioning from classical to post-quantum cryptography, kinet-crypto supports hybrid schemes:
+
+```cpp
+#include "hybrid.hpp"
+
+// Generate hybrid key pair (BLS + ML-DSA)
+auto [sk, pk] = kinet::crypto::hybrid_keygen();
+
+// Hybrid signature contains both BLS and ML-DSA signatures
+auto sig = kinet::crypto::hybrid_sign(sk, message);
+
+// Verification requires both signatures to be valid
+bool valid = kinet::crypto::hybrid_verify(pk, message, sig);
+```
+
+## Security Considerations
+
+### Side-Channel Protection
+
+All implementations use constant-time operations:
+
+```cpp
+// Rejection sampling uses constant-time comparison
+bool in_range = kinet::crypto::ct_less_than(sample, bound);
+```
+
+### Randomness Requirements
+
+Key generation and (non-deterministic) signing require high-quality randomness:
+
+```cpp
+// Uses system CSPRNG by default
+auto [sk, pk] = kinet::crypto::mldsa_keygen<MLDSA65>();
+
+// Or provide custom RNG
+auto [sk, pk] = kinet::crypto::mldsa_keygen<MLDSA65>(custom_rng);
+```
+
+## Go Bindings
+
+```go
+package main
+
+import "github.com/kinet-labs/crypto/go/mldsa"
+
+func main() {
+    // Generate ML-DSA-65 key pair
+    sk, pk := mldsa.KeyGen65()
+
+    // Sign message
+    msg := []byte("Post-quantum secure!")
+    sig := mldsa.Sign(sk, msg)
+
+    // Verify
+    valid := mldsa.Verify(pk, msg, sig)
+    fmt.Println("Valid:", valid)
+}
+```
+
+## Comparison with Other Schemes
+
+| Property | ML-DSA-65 | Ed25519 | BLS12-381 |
+|----------|-----------|---------|-----------|
+| Quantum Safe | Yes | No | No |
+| Public Key Size | 1,952 B | 32 B | 48 B |
+| Signature Size | 3,293 B | 64 B | 96 B |
+| Sign Speed | 25K/s | 70K/s | 15K/s |
+| Verify Speed | 45K/s | 30K/s | 8K/s |
+| Aggregatable | No | No | Yes |

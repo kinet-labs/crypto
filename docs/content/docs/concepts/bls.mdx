@@ -1,0 +1,207 @@
+---
+title: BLS Signatures
+description: BLS12-381 curve operations and aggregate signatures
+---
+
+# BLS Signatures
+
+BLS (Boneh-Lynn-Shacham) signatures on the BLS12-381 curve provide efficient signature aggregation, making them ideal for blockchain consensus and multi-signature schemes.
+
+## Overview
+
+The BLS12-381 curve is a pairing-friendly elliptic curve with:
+
+- **381-bit** prime field modulus
+- **255-bit** scalar field
+- **128-bit** security level
+- Efficient pairings for signature verification
+
+## Key Properties
+
+### Signature Aggregation
+
+Multiple BLS signatures can be combined into a single constant-size signature:
+
+```cpp
+// Aggregate n signatures into one
+std::vector<Signature> sigs = collect_signatures();
+Signature agg_sig = kinet::crypto::bls_aggregate(sigs);
+
+// Verify aggregated signature against all public keys
+bool valid = kinet::crypto::bls_aggregate_verify(
+    public_keys, messages, agg_sig
+);
+```
+
+### Deterministic Signatures
+
+BLS signatures are deterministic - the same message and secret key always produce the same signature, eliminating the need for secure random number generation during signing.
+
+## API Usage
+
+### Key Generation
+
+```cpp
+#include "bls.hpp"
+
+// Generate a new key pair
+auto [sk, pk] = kinet::crypto::bls_keygen();
+
+// Derive public key from secret key
+PublicKey pk2 = kinet::crypto::bls_sk_to_pk(sk);
+```
+
+### Signing and Verification
+
+```cpp
+// Sign a message (hash-to-curve applied internally)
+std::vector<uint8_t> message = {...};
+Signature sig = kinet::crypto::bls_sign(sk, message);
+
+// Verify signature
+bool valid = kinet::crypto::bls_verify(pk, message, sig);
+```
+
+### Aggregate Signatures
+
+```cpp
+// Collect individual signatures
+std::vector<Signature> signatures;
+std::vector<PublicKey> pubkeys;
+std::vector<std::vector<uint8_t>> messages;
+
+for (auto& signer : signers) {
+    signatures.push_back(signer.sign(message));
+    pubkeys.push_back(signer.public_key());
+    messages.push_back(message);
+}
+
+// Aggregate into single signature
+Signature agg = kinet::crypto::bls_aggregate(signatures);
+
+// Verify aggregate (much faster than verifying individually)
+bool valid = kinet::crypto::bls_aggregate_verify(pubkeys, messages, agg);
+```
+
+## GPU Acceleration
+
+BLS operations leverage Metal compute shaders for parallel execution:
+
+### Multi-Scalar Multiplication (MSM)
+
+The most expensive BLS operation is MSM, used in signature verification and key aggregation:
+
+```metal
+// Pippenger's algorithm on GPU (simplified)
+kernel void msm_bucket_accumulation(
+    device const Point* points [[buffer(0)]],
+    device const Scalar* scalars [[buffer(1)]],
+    device Point* buckets [[buffer(2)]],
+    uint tid [[thread_position_in_grid]]
+) {
+    // Accumulate points into buckets based on scalar windows
+    uint window = extract_window(scalars[tid], window_idx);
+    atomic_add_point(buckets[window], points[tid]);
+}
+```
+
+Performance comparison:
+
+| Operation | CPU (1 thread) | Metal GPU |
+|-----------|---------------|-----------|
+| MSM (256 points) | 45ms | 3ms |
+| MSM (4096 points) | 720ms | 12ms |
+| MSM (65536 points) | 11.5s | 85ms |
+
+### Pairing Computation
+
+BLS verification requires bilinear pairings, computed efficiently on GPU:
+
+```cpp
+// Pairing check for signature verification
+// e(sig, G2) == e(H(msg), pk)
+bool valid = kinet::crypto::bls_pairing_check(sig, g2_gen, hash, pk);
+```
+
+## Serialization
+
+### Compressed Format
+
+Public keys and signatures use compressed serialization:
+
+```cpp
+// Serialize to compressed format (48 bytes for G1, 96 bytes for G2)
+std::vector<uint8_t> pk_bytes = pk.to_compressed();
+std::vector<uint8_t> sig_bytes = sig.to_compressed();
+
+// Deserialize
+PublicKey pk2 = PublicKey::from_compressed(pk_bytes);
+Signature sig2 = Signature::from_compressed(sig_bytes);
+```
+
+### Wire Format
+
+| Element | Size | Format |
+|---------|------|--------|
+| Secret Key | 32 bytes | Big-endian scalar |
+| Public Key (G1) | 48 bytes | Compressed point |
+| Signature (G2) | 96 bytes | Compressed point |
+
+## Security Considerations
+
+### Rogue Key Attacks
+
+When aggregating signatures from untrusted parties, use proof-of-possession to prevent rogue key attacks:
+
+```cpp
+// Generate proof of possession
+ProofOfPossession pop = kinet::crypto::bls_pop_prove(sk);
+
+// Verify proof before accepting public key
+bool valid_pop = kinet::crypto::bls_pop_verify(pk, pop);
+```
+
+### Hash-to-Curve
+
+Messages are hashed to curve points using the standard hash_to_curve algorithm (RFC 9380):
+
+```cpp
+// Hash arbitrary message to G2 point
+G2Point h = kinet::crypto::hash_to_g2(message, dst);
+```
+
+## BN254 Support
+
+For zk-SNARK applications requiring BN254, similar APIs are available:
+
+```cpp
+#include "bn254.hpp"
+
+// BN254 operations (faster but lower security margin)
+auto [sk, pk] = kinet::crypto::bn254_keygen();
+auto sig = kinet::crypto::bn254_sign(sk, message);
+```
+
+## Go Bindings
+
+```go
+package main
+
+import "github.com/kinet-labs/crypto/go/bls"
+
+func main() {
+    // Generate key pair
+    sk, pk := bls.KeyGen()
+
+    // Sign message
+    msg := []byte("Hello, BLS!")
+    sig := bls.Sign(sk, msg)
+
+    // Verify
+    valid := bls.Verify(pk, msg, sig)
+
+    // Aggregate multiple signatures
+    sigs := []bls.Signature{sig1, sig2, sig3}
+    aggSig := bls.Aggregate(sigs)
+}
+```

@@ -1,0 +1,300 @@
+---
+title: ML-DSA API
+description: ML-DSA (Dilithium) signature function reference
+---
+
+# ML-DSA API Reference
+
+## Parameter Sets
+
+```cpp
+// Security levels
+struct MLDSA44 {
+    static constexpr size_t PK_SIZE = 1312;
+    static constexpr size_t SK_SIZE = 2560;
+    static constexpr size_t SIG_SIZE = 2420;
+};
+
+struct MLDSA65 {
+    static constexpr size_t PK_SIZE = 1952;
+    static constexpr size_t SK_SIZE = 4032;
+    static constexpr size_t SIG_SIZE = 3293;
+};
+
+struct MLDSA87 {
+    static constexpr size_t PK_SIZE = 2592;
+    static constexpr size_t SK_SIZE = 4896;
+    static constexpr size_t SIG_SIZE = 4595;
+};
+```
+
+## Key Types
+
+### SecretKey
+
+```cpp
+template<typename Params>
+class SecretKey {
+public:
+    static constexpr size_t SIZE = Params::SK_SIZE;
+
+    // Constructors
+    static SecretKey generate();
+    static SecretKey from_bytes(std::span<const uint8_t> bytes);
+
+    // Serialization
+    std::vector<uint8_t> to_bytes() const;
+
+    // Derive public key
+    PublicKey<Params> public_key() const;
+};
+```
+
+### PublicKey
+
+```cpp
+template<typename Params>
+class PublicKey {
+public:
+    static constexpr size_t SIZE = Params::PK_SIZE;
+
+    // Constructors
+    static PublicKey from_bytes(std::span<const uint8_t> bytes);
+
+    // Serialization
+    std::vector<uint8_t> to_bytes() const;
+};
+```
+
+### Signature
+
+```cpp
+template<typename Params>
+class Signature {
+public:
+    static constexpr size_t SIZE = Params::SIG_SIZE;
+
+    // Constructors
+    static Signature from_bytes(std::span<const uint8_t> bytes);
+
+    // Serialization
+    std::vector<uint8_t> to_bytes() const;
+};
+```
+
+## Functions
+
+### mldsa_keygen
+
+Generate a new ML-DSA key pair.
+
+```cpp
+template<typename Params = MLDSA65>
+std::pair<SecretKey<Params>, PublicKey<Params>> mldsa_keygen();
+```
+
+**Template Parameters:**
+- `Params` - Security level (MLDSA44, MLDSA65, or MLDSA87)
+
+**Returns:** Tuple of (secret key, public key)
+
+**Example:**
+```cpp
+// ML-DSA-65 (recommended)
+auto [sk, pk] = kinet::crypto::mldsa_keygen<MLDSA65>();
+
+// ML-DSA-87 (highest security)
+auto [sk87, pk87] = kinet::crypto::mldsa_keygen<MLDSA87>();
+```
+
+### mldsa_sign
+
+Sign a message with ML-DSA.
+
+```cpp
+template<typename Params>
+Signature<Params> mldsa_sign(
+    const SecretKey<Params>& sk,
+    std::span<const uint8_t> message
+);
+```
+
+**Parameters:**
+- `sk` - Secret key
+- `message` - Message bytes to sign
+
+**Returns:** ML-DSA signature
+
+**Example:**
+```cpp
+std::vector<uint8_t> msg = get_message();
+auto sig = kinet::crypto::mldsa_sign(sk, msg);
+```
+
+### mldsa_sign_deterministic
+
+Sign deterministically (same input always produces same signature).
+
+```cpp
+template<typename Params>
+Signature<Params> mldsa_sign_deterministic(
+    const SecretKey<Params>& sk,
+    std::span<const uint8_t> message
+);
+```
+
+### mldsa_verify
+
+Verify an ML-DSA signature.
+
+```cpp
+template<typename Params>
+bool mldsa_verify(
+    const PublicKey<Params>& pk,
+    std::span<const uint8_t> message,
+    const Signature<Params>& sig
+);
+```
+
+**Parameters:**
+- `pk` - Public key
+- `message` - Original message bytes
+- `sig` - Signature to verify
+
+**Returns:** `true` if signature is valid
+
+**Example:**
+```cpp
+bool valid = kinet::crypto::mldsa_verify(pk, msg, sig);
+if (!valid) {
+    throw std::runtime_error("Invalid signature");
+}
+```
+
+## Internal Operations
+
+### mldsa_expand_a
+
+Expand public seed to matrix A.
+
+```cpp
+template<typename Params>
+Matrix<Params> mldsa_expand_a(std::span<const uint8_t, 32> rho);
+```
+
+### mldsa_ntt
+
+Number Theoretic Transform (GPU-accelerated).
+
+```cpp
+void mldsa_ntt(std::span<int32_t> poly);
+void mldsa_invntt(std::span<int32_t> poly);
+```
+
+## C API
+
+```c
+// Security level enum
+typedef enum {
+    MLDSA_44 = 2,
+    MLDSA_65 = 3,
+    MLDSA_87 = 5
+} mldsa_level_t;
+
+// Key sizes
+size_t mldsa_pk_size(mldsa_level_t level);
+size_t mldsa_sk_size(mldsa_level_t level);
+size_t mldsa_sig_size(mldsa_level_t level);
+
+// Key generation
+int mldsa_keygen(
+    mldsa_level_t level,
+    uint8_t* sk_out,
+    uint8_t* pk_out
+);
+
+// Signing
+int mldsa_sign(
+    mldsa_level_t level,
+    const uint8_t* sk,
+    const uint8_t* msg,
+    size_t msg_len,
+    uint8_t* sig_out,
+    size_t* sig_len
+);
+
+// Verification
+int mldsa_verify(
+    mldsa_level_t level,
+    const uint8_t* pk,
+    const uint8_t* msg,
+    size_t msg_len,
+    const uint8_t* sig,
+    size_t sig_len
+);
+```
+
+## Go API
+
+```go
+package mldsa
+
+// Security levels
+type Level int
+
+const (
+    Level2 Level = 2  // MLDSA-44
+    Level3 Level = 3  // MLDSA-65
+    Level5 Level = 5  // MLDSA-87
+)
+
+// KeyGen generates a new key pair
+func KeyGen(level Level) (SecretKey, PublicKey)
+
+// Convenience functions for each level
+func KeyGen44() (SecretKey, PublicKey)
+func KeyGen65() (SecretKey, PublicKey)
+func KeyGen87() (SecretKey, PublicKey)
+
+// Sign creates a signature
+func Sign(sk SecretKey, msg []byte) Signature
+
+// Verify checks a signature
+func Verify(pk PublicKey, msg []byte, sig Signature) bool
+```
+
+## Example: Complete Workflow
+
+```cpp
+#include "mldsa.hpp"
+#include <iostream>
+
+int main() {
+    // Generate key pair (ML-DSA-65)
+    auto [sk, pk] = kinet::crypto::mldsa_keygen<kinet::crypto::MLDSA65>();
+
+    // Message to sign
+    std::vector<uint8_t> message = {
+        'H', 'e', 'l', 'l', 'o', ',', ' ',
+        'p', 'o', 's', 't', '-', 'q', 'u', 'a', 'n', 't', 'u', 'm', '!'
+    };
+
+    // Sign
+    auto signature = kinet::crypto::mldsa_sign(sk, message);
+    std::cout << "Signature size: " << signature.to_bytes().size() << " bytes\n";
+
+    // Verify
+    bool valid = kinet::crypto::mldsa_verify(pk, message, signature);
+    std::cout << "Signature valid: " << (valid ? "yes" : "no") << "\n";
+
+    // Serialize for storage/transmission
+    auto pk_bytes = pk.to_bytes();
+    auto sig_bytes = signature.to_bytes();
+
+    // Deserialize
+    auto pk2 = kinet::crypto::PublicKey<kinet::crypto::MLDSA65>::from_bytes(pk_bytes);
+    auto sig2 = kinet::crypto::Signature<kinet::crypto::MLDSA65>::from_bytes(sig_bytes);
+
+    return 0;
+}
+```

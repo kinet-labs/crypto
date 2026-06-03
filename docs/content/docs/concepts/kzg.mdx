@@ -1,0 +1,287 @@
+---
+title: KZG Commitments
+description: Kate-Zaverucha-Goldberg polynomial commitment scheme
+---
+
+# KZG Commitments
+
+KZG (Kate-Zaverucha-Goldberg) is a polynomial commitment scheme that enables compact proofs of polynomial evaluation, essential for data availability and zero-knowledge applications.
+
+## Overview
+
+KZG commitments allow:
+
+1. **Commit** to a polynomial with a single group element
+2. **Open** the commitment at any point with a compact proof
+3. **Verify** the opening in constant time
+
+This makes KZG ideal for:
+
+- **Data availability** sampling (Ethereum EIP-4844)
+- **Verkle trees** (compact Merkle alternatives)
+- **PLONK** and other zk-SNARK systems
+
+## Mathematical Foundation
+
+Given a polynomial `f(x)` of degree `d`:
+
+```
+f(x) = a₀ + a₁x + a₂x² + ... + aₐx^d
+```
+
+### Trusted Setup
+
+KZG requires a structured reference string (SRS) generated from a secret `τ`:
+
+```
+SRS = { G, τG, τ²G, ..., τⁿG }
+```
+
+where `G` is the generator of G1 on BLS12-381.
+
+### Commitment
+
+```
+C = f(τ)G = a₀G + a₁(τG) + a₂(τ²G) + ...
+```
+
+### Opening Proof
+
+To prove `f(z) = y`, compute quotient polynomial:
+
+```
+q(x) = (f(x) - y) / (x - z)
+π = q(τ)G
+```
+
+### Verification
+
+Using bilinear pairings:
+
+```
+e(C - yG, G₂) = e(π, τG₂ - zG₂)
+```
+
+## API Usage
+
+### Setup
+
+```cpp
+#include "kzg.hpp"
+
+// Load trusted setup (from file or ceremony)
+auto srs = kinet::crypto::KZG::load_srs("mainnet_srs.dat");
+
+// Or generate for testing (NOT for production!)
+auto test_srs = kinet::crypto::KZG::generate_test_srs(4096);
+```
+
+### Commitment
+
+```cpp
+// Create polynomial from coefficients
+std::vector<Scalar> coeffs = {a0, a1, a2, a3};
+auto poly = kinet::crypto::Polynomial(coeffs);
+
+// Commit to polynomial
+auto commitment = kinet::crypto::kzg_commit(srs, poly);
+```
+
+### Opening and Verification
+
+```cpp
+// Generate opening proof at point z
+Scalar z = ...;
+auto [proof, y] = kinet::crypto::kzg_open(srs, poly, z);
+
+// Verify the proof
+bool valid = kinet::crypto::kzg_verify(srs, commitment, z, y, proof);
+```
+
+### Batch Operations
+
+```cpp
+// Batch commit multiple polynomials
+std::vector<Polynomial> polys = {...};
+auto commitments = kinet::crypto::kzg_commit_batch(srs, polys);
+
+// Batch verify multiple openings (much faster)
+std::vector<Opening> openings = {...};
+bool all_valid = kinet::crypto::kzg_verify_batch(srs, openings);
+```
+
+## GPU Acceleration
+
+### Multi-Scalar Multiplication
+
+Commitment computation is dominated by MSM, accelerated on Metal:
+
+```cpp
+// GPU-accelerated commitment
+auto commitment = kinet::crypto::kzg_commit_gpu(srs, poly);
+```
+
+Performance comparison:
+
+| Polynomial Degree | CPU | Metal GPU | Speedup |
+|-------------------|-----|-----------|---------|
+| 2^12 (4K) | 45ms | 3ms | 15x |
+| 2^14 (16K) | 180ms | 8ms | 22x |
+| 2^16 (64K) | 720ms | 25ms | 29x |
+| 2^18 (256K) | 2.9s | 80ms | 36x |
+
+### FFT for Polynomial Evaluation
+
+```cpp
+// Evaluate polynomial at all roots of unity (FFT)
+auto evaluations = kinet::crypto::fft_gpu(poly);
+
+// Interpolate from evaluations (inverse FFT)
+auto poly2 = kinet::crypto::ifft_gpu(evaluations);
+```
+
+## Data Availability
+
+For Ethereum-style data availability:
+
+### Blob Commitment
+
+```cpp
+// Commit to 4096-element blob (EIP-4844 compatible)
+std::vector<Scalar> blob(4096);
+// ... fill blob with data ...
+
+auto commitment = kinet::crypto::blob_to_kzg_commitment(srs, blob);
+```
+
+### Proof Generation
+
+```cpp
+// Generate proof for specific point
+auto proof = kinet::crypto::compute_kzg_proof(srs, blob, z);
+
+// Generate proof for blob (EIP-4844)
+auto blob_proof = kinet::crypto::compute_blob_kzg_proof(srs, blob, commitment);
+```
+
+### Verification
+
+```cpp
+// Verify blob proof
+bool valid = kinet::crypto::verify_blob_kzg_proof(
+    srs, blob, commitment, blob_proof
+);
+
+// Batch verify multiple blobs
+bool all_valid = kinet::crypto::verify_blob_kzg_proof_batch(
+    srs, blobs, commitments, proofs
+);
+```
+
+## Verkle Trees
+
+KZG enables Verkle trees with constant-size proofs:
+
+```cpp
+#include "verkle.hpp"
+
+// Build Verkle tree
+std::map<Key, Value> data = {...};
+auto tree = kinet::crypto::VerkleTree::build(srs, data);
+
+// Get root commitment
+auto root = tree.root();
+
+// Generate multiproof for multiple keys
+std::vector<Key> keys = {...};
+auto proof = tree.prove_multi(keys);
+
+// Verify multiproof
+bool valid = kinet::crypto::verify_verkle_multiproof(
+    srs, root, keys, values, proof
+);
+```
+
+### Verkle vs Merkle Comparison
+
+| Property | Merkle (BLAKE3) | Verkle (KZG) |
+|----------|-----------------|--------------|
+| Proof Size | O(log n) hashes | O(1) + O(log n) field elements |
+| 1M leaves proof | ~640 bytes | ~100 bytes |
+| Verification | O(log n) hashes | O(1) pairings |
+| Update | O(log n) | O(log n) |
+| Trusted Setup | No | Yes |
+
+## Serialization
+
+### Commitment Format
+
+```cpp
+// Serialize commitment (48 bytes, compressed G1)
+auto bytes = commitment.to_bytes();
+
+// Deserialize
+auto commitment2 = kinet::crypto::KZGCommitment::from_bytes(bytes);
+```
+
+### Proof Format
+
+```cpp
+// Serialize proof (48 bytes)
+auto proof_bytes = proof.to_bytes();
+```
+
+## Go Bindings
+
+```go
+package main
+
+import "github.com/kinet-labs/crypto/go/kzg"
+
+func main() {
+    // Load SRS
+    srs := kzg.LoadSRS("mainnet_srs.dat")
+
+    // Commit to polynomial
+    poly := kzg.NewPolynomial(coefficients)
+    commitment := kzg.Commit(srs, poly)
+
+    // Open at point
+    z := kzg.NewScalar(42)
+    proof, y := kzg.Open(srs, poly, z)
+
+    // Verify
+    valid := kzg.Verify(srs, commitment, z, y, proof)
+
+    // EIP-4844 blob operations
+    blob := make([]kzg.Scalar, 4096)
+    blobCommitment := kzg.BlobToCommitment(srs, blob)
+}
+```
+
+## Security Considerations
+
+### Trusted Setup
+
+The SRS must be generated through a secure ceremony:
+
+```cpp
+// Production: Use ceremony output
+auto srs = kinet::crypto::KZG::load_srs("powers-of-tau-ceremony.dat");
+
+// Testing only: Generate locally (INSECURE!)
+auto test_srs = kinet::crypto::KZG::generate_test_srs(n);
+```
+
+### Subgroup Checks
+
+All points must be verified to be in the correct subgroup:
+
+```cpp
+// Automatically checked on deserialization
+auto commitment = KZGCommitment::from_bytes(bytes);
+// Throws if not in G1 subgroup
+
+// Manual check
+bool valid = kinet::crypto::is_in_g1(point);
+```

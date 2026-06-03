@@ -1,0 +1,69 @@
+---
+title: Cryptographic Concepts
+description: Understanding the cryptographic primitives in kinet-crypto
+---
+
+# Cryptographic Concepts
+
+This section covers the theoretical foundations and design principles of the cryptographic primitives implemented in kinet-crypto.
+
+## Overview
+
+kinet-crypto implements a carefully selected set of cryptographic primitives optimized for blockchain and zero-knowledge applications:
+
+| Primitive | Use Case | Security Level |
+|-----------|----------|----------------|
+| BLS12-381 | Aggregate signatures, pairings | 128-bit |
+| BN254 | zk-SNARKs, efficient pairings | 100-bit |
+| BLAKE3 | Fast hashing, Merkle trees | 256-bit |
+| ML-DSA | Post-quantum signatures | NIST Level 2/3/5 |
+| KZG | Polynomial commitments | 128-bit |
+
+## Design Principles
+
+### 1. GPU-First Architecture
+
+All computationally intensive operations leverage Metal compute shaders for maximum throughput on Apple Silicon:
+
+- **Field arithmetic** - Montgomery multiplication in parallel
+- **Multi-scalar multiplication (MSM)** - Pippenger's algorithm on GPU
+- **FFT/NTT** - Radix-2 transforms for polynomial operations
+- **Hash computation** - Parallel BLAKE3 tree hashing
+
+### 2. Constant-Time Operations
+
+Security-critical operations are implemented in constant time to prevent timing side-channel attacks:
+
+```cpp
+// All comparison and conditional operations use constant-time primitives
+bool ct_equal(const uint8_t* a, const uint8_t* b, size_t len) {
+    uint8_t diff = 0;
+    for (size_t i = 0; i < len; i++) {
+        diff |= a[i] ^ b[i];
+    }
+    return diff == 0;
+}
+```
+
+### 3. Memory Safety
+
+The library uses RAII patterns and smart pointers to prevent memory leaks and use-after-free vulnerabilities:
+
+```cpp
+class SecureBuffer {
+    std::unique_ptr<uint8_t[]> data;
+    size_t size;
+public:
+    ~SecureBuffer() {
+        // Secure erase on destruction
+        std::memset(data.get(), 0, size);
+    }
+};
+```
+
+## Topics
+
+- [BLS Signatures](/docs/concepts/bls) - BLS12-381 curve and aggregate signatures
+- [ML-DSA (Dilithium)](/docs/concepts/mldsa) - Post-quantum digital signatures
+- [Hashing](/docs/concepts/hashing) - BLAKE3 and hash-to-curve
+- [KZG Commitments](/docs/concepts/kzg) - Polynomial commitment schemes

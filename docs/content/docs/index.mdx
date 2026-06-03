@@ -1,0 +1,123 @@
+---
+title: kinet-crypto
+description: GPU-accelerated cryptographic primitives for blockchain and zero-knowledge applications
+---
+
+# kinet-crypto
+
+**kinet-crypto** is a high-performance cryptographic library providing GPU-accelerated implementations of essential blockchain cryptographic primitives via Metal compute shaders for Apple Silicon.
+
+## Key Features
+
+- **BLS12-381 Curve Operations** - Pairing-friendly curve for aggregate signatures
+- **BN254 Curve** - Efficient curve for zk-SNARKs
+- **KZG Polynomial Commitments** - Polynomial commitments for data availability
+- **BLAKE3 Hashing** - Modern, parallelizable cryptographic hash
+- **ML-DSA (Dilithium)** - Post-quantum digital signatures (FIPS 204)
+- **CGO Bindings** - Native Go integration
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Go Application                          │
+├─────────────────────────────────────────────────────────────┤
+│                      CGO Bridge                              │
+│                  (include/crypto_cgo.h)                      │
+├─────────────────────────────────────────────────────────────┤
+│                     C++ API Layer                            │
+│              (src/bls.cpp, src/mldsa.cpp, etc.)             │
+├─────────────────────────────────────────────────────────────┤
+│                  Objective-C++ Bridge                        │
+│                   (src/metal_*.mm)                           │
+├─────────────────────────────────────────────────────────────┤
+│                   Metal Compute Shaders                      │
+│               (shaders/*.metal, shaders/*.h)                 │
+└─────────────────────────────────────────────────────────────┘
+```
+
+## Quick Start
+
+### Building
+
+```bash
+# Clone the repository
+git clone https://github.com/kinet-labs/crypto
+cd crypto
+
+# Build with CMake
+mkdir build && cd build
+cmake .. -DCMAKE_BUILD_TYPE=Release
+make -j$(nproc)
+```
+
+### Using from Go
+
+```go
+package main
+
+import "github.com/kinet-labs/crypto/go/crypto"
+
+func main() {
+    // Generate BLS key pair
+    sk, pk := crypto.BLSKeyGen()
+
+    // Sign a message
+    message := []byte("Hello, blockchain!")
+    sig := crypto.BLSSign(sk, message)
+
+    // Verify the signature
+    valid := crypto.BLSVerify(pk, message, sig)
+    fmt.Println("Signature valid:", valid)
+}
+```
+
+### Using from C++
+
+```cpp
+#include "bls.hpp"
+#include "hash.hpp"
+
+int main() {
+    // Generate key pair
+    auto [sk, pk] = kinet::crypto::bls_keygen();
+
+    // Hash and sign
+    auto msg_hash = kinet::crypto::blake3(message);
+    auto sig = kinet::crypto::bls_sign(sk, msg_hash);
+
+    // Verify
+    bool valid = kinet::crypto::bls_verify(pk, msg_hash, sig);
+    return valid ? 0 : 1;
+}
+```
+
+## Performance
+
+Benchmarks on Apple M1 Max:
+
+| Operation | Throughput |
+|-----------|------------|
+| BLS Sign | 15,000 ops/sec |
+| BLS Verify | 8,000 ops/sec |
+| BLS Aggregate (1000 sigs) | 500 ops/sec |
+| BLAKE3 (1MB) | 8 GB/sec |
+| ML-DSA Sign | 25,000 ops/sec |
+| ML-DSA Verify | 45,000 ops/sec |
+| KZG Commit (4096 coeffs) | 2,000 ops/sec |
+
+## Library Dependencies
+
+kinet-crypto depends on **kinet-gpu** for Metal compute infrastructure:
+
+```
+kinet-gpu (Metal compute foundation)
+    ↑
+kinet-crypto (cryptographic primitives)
+```
+
+## Documentation Sections
+
+- [**Concepts**](/docs/concepts) - Understand the cryptographic primitives
+- [**API Reference**](/docs/api) - Detailed API documentation
+- [**Backends**](/docs/backends) - GPU and CPU backend details
