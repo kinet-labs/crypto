@@ -2,19 +2,30 @@
 
 cryptography library - BLS12-381 pairings, ML-DSA, ML-KEM post-quantum signatures
 
-## Features
 
-- **BLS12-381** - Pairing-friendly curves for threshold signatures
-- **ML-DSA** - Post-quantum digital signatures (CRYSTALS-Dilithium)
-- **ML-KEM** - Post-quantum key encapsulation (CRYSTALS-Kyber)
-- **secp256k1** - Ethereum-compatible ECDSA
+Canonical native cryptographic primitives for the Kinet / Hanzo / Zoo
+ecosystem. CPU + GPU implementations live here and only here.
 
-## Installation
+* CPU: portable C++17 / C++20, no third-party crypto libraries
+* GPU: CUDA, Metal, WGSL kernels with byte-equal CPU↔GPU output
+* C ABI: `include/kinet/crypto/<alg>.h`, callable from Go (cgo) and
+  Rust (bindgen / kinet-crypto-sys)
+
+The Go entry point is `github.com/kinet-labs/crypto`; the GPU device router
+is `github.com/kinet-labs/go-accel`.
+
+## Status
+
+Phase 1 (current): `secp256k1`, `keccak`. See [`MIGRATION.md`](MIGRATION.md)
+for the full per-algorithm migration plan and status.
+
+## Building
 
 ```bash
-cmake -B build -DCMAKE_BUILD_TYPE=Release
-cmake --build build
-cmake --install build --prefix /usr/local
+mkdir -p build && cd build
+cmake -DKINET_CRYPTO_ENABLE_METAL=ON ..
+cmake --build . -j$(nproc)
+ctest --output-on-failure
 ```
 
 ## Usage

@@ -23,8 +23,6 @@
 //   Stage 3: 8 twiddles  -> constant memory (4 cycles)
 //   Stage 4+: threadgroup prefetch (20-30 cycles)
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-2-Clause
 // =============================================================================
 
 #include <metal_stdlib>

@@ -15,8 +15,6 @@
 //   - Matrix-vector products
 //   - Batch encapsulation/decapsulation
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #ifndef KINET_METAL_MLKEM_H
 #define KINET_METAL_MLKEM_H

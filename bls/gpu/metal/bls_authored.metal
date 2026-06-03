@@ -10,8 +10,6 @@
 //   r = 0x73eda753299d7d483339d80809a1d80553bda402fffe5bfeffffffff00000001
 //   G1: y^2 = x^3 + 4  over Fp
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #include <metal_stdlib>
 using namespace metal;

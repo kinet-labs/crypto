@@ -10,8 +10,6 @@
 // This header provides the interface used by the Go precompile via cgo.
 // Implementation uses Metal (macOS) or CUDA (Linux) backends.
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #ifndef KINET_CRYPTO_METAL_AI_H
 #define KINET_CRYPTO_METAL_AI_H

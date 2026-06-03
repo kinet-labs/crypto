@@ -15,8 +15,6 @@
 //   Public key: 1952 bytes
 //   Signature: 3309 bytes
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #include <metal_stdlib>
 using namespace metal;

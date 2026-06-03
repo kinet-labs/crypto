@@ -11,8 +11,6 @@
 // - Below threshold: CPU execution (lower latency)
 // - Above threshold: GPU execution (higher throughput)
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #ifndef KINET_METAL_ZK_H
 #define KINET_METAL_ZK_H

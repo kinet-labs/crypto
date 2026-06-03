@@ -5,8 +5,6 @@
 // Poseidon2 hash function optimized for zero-knowledge proof systems.
 // Native field arithmetic over BN254 and BLS12-381 scalar fields.
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #ifndef KINET_METAL_POSEIDON2_H
 #define KINET_METAL_POSEIDON2_H

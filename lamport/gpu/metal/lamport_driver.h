@@ -5,8 +5,6 @@
 // Hash-based post-quantum signatures. Simple, fast, quantum-resistant.
 // GPU acceleration for batch key generation and verification.
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #ifndef KINET_METAL_LAMPORT_H
 #define KINET_METAL_LAMPORT_H
