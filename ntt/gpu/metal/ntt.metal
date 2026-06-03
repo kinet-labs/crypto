@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 /// @file ntt.metal
 /// Shared Number Theoretic Transform (NTT) primitives for lattice-based PQ crypto.
 ///

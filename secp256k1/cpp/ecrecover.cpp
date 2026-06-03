@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // First-party secp256k1 ECDSA public-key recovery.
 //
 // Public C ABI: kinet/crypto/secp256k1.h
@@ -19,19 +16,21 @@
 #include "kinet/crypto/secp256k1.h"
 #include "field.hpp"
 #include "curve.hpp"
+#include "ecrecover_pipeline.hpp"
 
 #include <cstring>
+#include <vector>
 
 namespace lc = kinet::crypto::secp256k1;
 
-extern "C" kinet_secp256k1_status kinet_secp256k1_ecrecover(
+extern "C" secp256k1_status secp256k1_ecrecover(
     const uint8_t hash[32],
     const uint8_t r_be[32],
     const uint8_t s_be[32],
     uint8_t v,
     uint8_t pubkey[64]) {
 
-    if (!hash || !r_be || !s_be || !pubkey) return KINET_SECP256K1_ERR_NULL_ARG;
+    if (!hash || !r_be || !s_be || !pubkey) return SECP256K1_ERR_NULL_ARG;
 
     // Normalize v: accept {0, 1, 27, 28} and EIP-155 chain-id encodings.
     if (v >= 27) v -= 27;
@@ -42,10 +41,10 @@ extern "C" kinet_secp256k1_status kinet_secp256k1_ecrecover(
     lc::U256 e = lc::U256::from_be32(hash);
 
     // r in [1, n-1]
-    if (r.is_zero() || lc::U256::cmp(r, lc::N) >= 0) return KINET_SECP256K1_ERR_INVALID_R;
+    if (r.is_zero() || lc::U256::cmp(r, lc::N) >= 0) return SECP256K1_ERR_INVALID_R;
     // s in [1, n-1]
-    if (s.is_zero() || lc::U256::cmp(s, lc::N) >= 0) return KINET_SECP256K1_ERR_INVALID_S;
-    if (v > 1) return KINET_SECP256K1_ERR_INVALID_V;
+    if (s.is_zero() || lc::U256::cmp(s, lc::N) >= 0) return SECP256K1_ERR_INVALID_S;
+    if (v > 1) return SECP256K1_ERR_INVALID_V;
 
     // Step 2: lift r to point R on curve. Compute y^2 = r^3 + 7 mod p.
     lc::U256 r_p_mont = lc::to_mont_p(r);
@@ -56,7 +55,7 @@ extern "C" kinet_secp256k1_status kinet_secp256k1_ecrecover(
     lc::U256 y2_mont = lc::fp_add(r3_mont, seven_mont);
 
     lc::U256 y_mont;
-    if (!lc::fp_sqrt(y2_mont, y_mont)) return KINET_SECP256K1_ERR_NO_SQRT;
+    if (!lc::fp_sqrt(y2_mont, y_mont)) return SECP256K1_ERR_NO_SQRT;
 
     // Pick the y with the requested parity.
     lc::U256 y_normal = lc::from_mont_p(y_mont);
@@ -104,7 +103,7 @@ extern "C" kinet_secp256k1_status kinet_secp256k1_ecrecover(
 
     lc::JacobianPoint Q = lc::jac_msm2(u1, G, u2, R);
     lc::AffinePoint Qa = lc::jacobian_to_affine(Q);
-    if (Qa.infinity) return KINET_SECP256K1_ERR_AT_INFINITY;
+    if (Qa.infinity) return SECP256K1_ERR_AT_INFINITY;
 
     // Output Q.x || Q.y as 64 bytes big-endian, normal (non-Montgomery) form.
     lc::U256 qx = lc::from_mont_p(Qa.x);
@@ -112,31 +111,31 @@ extern "C" kinet_secp256k1_status kinet_secp256k1_ecrecover(
     qx.to_be32(pubkey);
     qy.to_be32(pubkey + 32);
 
-    return KINET_SECP256K1_OK;
+    return SECP256K1_OK;
 }
 
-extern "C" kinet_secp256k1_status kinet_secp256k1_ecrecover_verify(
+extern "C" secp256k1_status secp256k1_ecrecover_verify(
     const uint8_t hash[32],
     const uint8_t r[32],
     const uint8_t s[32],
     uint8_t v,
     const uint8_t expected_pubkey[64]) {
 
-    if (!expected_pubkey) return KINET_SECP256K1_ERR_NULL_ARG;
+    if (!expected_pubkey) return SECP256K1_ERR_NULL_ARG;
     uint8_t got[64];
-    auto st = kinet_secp256k1_ecrecover(hash, r, s, v, got);
-    if (st != KINET_SECP256K1_OK) return st;
-    if (std::memcmp(got, expected_pubkey, 64) != 0) return KINET_SECP256K1_ERR_AT_INFINITY;
-    return KINET_SECP256K1_OK;
+    auto st = secp256k1_ecrecover(hash, r, s, v, got);
+    if (st != SECP256K1_OK) return st;
+    if (std::memcmp(got, expected_pubkey, 64) != 0) return SECP256K1_ERR_AT_INFINITY;
+    return SECP256K1_OK;
 }
 
-extern "C" kinet_secp256k1_status kinet_secp256k1_ecrecover_batch(
+extern "C" secp256k1_status secp256k1_ecrecover_batch(
     const uint8_t* inputs,
     size_t n,
     uint8_t* out_pk,
     uint8_t* out_st) {
 
-    if (!inputs || !out_pk || !out_st) return KINET_SECP256K1_ERR_NULL_ARG;
+    if (!inputs || !out_pk || !out_st) return SECP256K1_ERR_NULL_ARG;
 
     for (size_t i = 0; i < n; ++i) {
         const uint8_t* base = inputs + i * 97;
@@ -145,8 +144,50 @@ extern "C" kinet_secp256k1_status kinet_secp256k1_ecrecover_batch(
         const uint8_t* s_be = base + 64;
         uint8_t v = base[96];
 
-        auto st = kinet_secp256k1_ecrecover(hash, r_be, s_be, v, out_pk + i * 64);
+        auto st = secp256k1_ecrecover(hash, r_be, s_be, v, out_pk + i * 64);
         out_st[i] = (uint8_t)st;
     }
-    return KINET_SECP256K1_OK;
+    return SECP256K1_OK;
+}
+
+namespace {
+
+// Split 97-byte tuples into separate hashes/sigs vectors so we can feed the
+// pipeline's (hashes, sigs) shape from the existing 97-byte tuple ABI.
+void split_tuples_97(size_t n, const uint8_t* tuples,
+                     std::vector<uint8_t>& hashes_out,
+                     std::vector<uint8_t>& sigs_out) {
+    hashes_out.resize(n * 32);
+    sigs_out.resize(n * 65);
+    for (size_t i = 0; i < n; ++i) {
+        std::memcpy(hashes_out.data() + i * 32, tuples + i * 97, 32);
+        // sig = r || s || v
+        std::memcpy(sigs_out.data() + i * 65, tuples + i * 97 + 32, 64); // r||s
+        sigs_out[i * 65 + 64] = tuples[i * 97 + 96];                     // v
+    }
+}
+
+}  // namespace
+
+extern "C" secp256k1_status secp256k1_ecrecover_batch_pipeline(
+    const uint8_t* inputs,
+    size_t n,
+    uint8_t* out_pk,
+    uint8_t* out_st) {
+
+    if (n == 0) return SECP256K1_OK;
+    if (!inputs || !out_pk || !out_st) return SECP256K1_ERR_NULL_ARG;
+
+    std::vector<uint8_t> hashes, sigs;
+    split_tuples_97(n, inputs, hashes, sigs);
+    return lc::ecrecover_batch_pipeline(n, hashes.data(), sigs.data(), out_pk, out_st);
+}
+
+extern "C" secp256k1_status secp256k1_ecrecover_address_batch(
+    size_t n,
+    const uint8_t* hashes,
+    const uint8_t* sigs,
+    uint8_t* out_addr,
+    uint8_t* out_st) {
+    return lc::ecrecover_address_batch_pipeline(n, hashes, sigs, out_addr, out_st);
 }

@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Metal-side test for BLS12-381 Fp2/Fp6/Fp12 arithmetic.
 //
 // 1. Load test vectors from auto-generated vectors_fp_tower.h (oracle is blst).

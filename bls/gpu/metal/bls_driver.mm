@@ -5,6 +5,8 @@
 // Objective-C++ implementation for Metal compute shader dispatch.
 // Manages GPU buffers, pipeline states, and kernel execution.
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>

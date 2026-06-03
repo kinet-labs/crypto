@@ -5,6 +5,8 @@
 // C++ wrapper for Metal compute shaders for ZK cryptographic operations.
 // Provides GPU-accelerated Pedersen, Blake3, KZG, and BN254 operations.
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 

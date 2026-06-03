@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // CPU vs GPU byte-equality test for secp256k1.
 //
 // The Metal kernel currently emits a 20-byte Ethereum address per signature
@@ -25,7 +22,7 @@
 namespace lc = kinet::crypto::secp256k1;
 
 #if __APPLE__
-extern "C" kinet_secp256k1_status kinet_secp256k1_ecrecover_address_batch_metal(
+extern "C" secp256k1_status secp256k1_ecrecover_address_batch_metal(
     const uint8_t* inputs, size_t n, uint8_t* out_addr, uint8_t* out_st,
     const char* metallib_path);
 #endif
@@ -109,13 +106,13 @@ int main(int argc, char** argv) {
 
         // CPU compute: ecrecover -> pubkey -> keccak256 -> last 20 bytes.
         uint8_t pubkey[64];
-        auto st = kinet_secp256k1_ecrecover(base, base + 32, base + 64, sig.v, pubkey);
-        if (st != KINET_SECP256K1_OK) {
+        auto st = secp256k1_ecrecover(base, base + 32, base + 64, sig.v, pubkey);
+        if (st != SECP256K1_OK) {
             std::fprintf(stderr, "CPU ecrecover failed at i=%d\n", prepared);
             return 2;
         }
         uint8_t hash[32];
-        kinet_keccak256(pubkey, 64, hash);
+        keccak256(pubkey, 64, hash);
         std::memcpy(&cpu_addr[prepared * 20], hash + 12, 20);
 
         ++prepared;
@@ -131,9 +128,9 @@ int main(int argc, char** argv) {
     }
     std::vector<uint8_t> gpu_addr(N * 20, 0xFF);
     std::vector<uint8_t> gpu_st(N, 0xFF);
-    auto st = kinet_secp256k1_ecrecover_address_batch_metal(
+    auto st = secp256k1_ecrecover_address_batch_metal(
         inputs.data(), N, gpu_addr.data(), gpu_st.data(), metallib);
-    if (st != KINET_SECP256K1_OK) {
+    if (st != SECP256K1_OK) {
         std::fprintf(stderr, "GPU dispatch returned %d\n", (int)st);
         return 3;
     }

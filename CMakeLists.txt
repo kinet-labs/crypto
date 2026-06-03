@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(kinet_crypto VERSION 1.0.0 LANGUAGES C CXX)
 
 # =============================================================================
-# kinet-labs/crypto - canonical GPU-accelerated cryptographic primitives
+# kinetcpp/crypto - canonical GPU-accelerated cryptographic primitives
 # =============================================================================
 #
 # Layout (one directory per algorithm):
@@ -15,10 +15,10 @@ project(kinet_crypto VERSION 1.0.0 LANGUAGES C CXX)
 #   <alg>/c-abi/c_<alg>.{h,cpp}  algorithm-internal C ABI shim
 #   <alg>/test/                  CPU + GPU correctness + determinism tests
 #
-# 28 algorithms: aead blake2b blake3 bls bn254 cggmp21 ed25519 evm256 frost
-#                ipa keccak kzg lamport mldsa mlkem modexp ntt pedersen
-#                poly_mul poseidon ringtail ripemd160 secp256k1 secp256r1
-#                sha256 slhdsa sr25519 verkle
+# 29 algorithms: aead attestation blake2b blake3 bls bn254 cggmp21 ed25519
+#                evm256 frost ipa keccak kzg lamport mldsa mlkem modexp ntt
+#                pedersen poly_mul poseidon ringtail ripemd160 secp256k1
+#                secp256r1 sha256 slhdsa sr25519 verkle
 #
 # Hard rules:
 #   * No vendoring. Every implementation is first-party authored code.
@@ -61,11 +61,13 @@ endif()
 include_directories(BEFORE
     ${CMAKE_CURRENT_SOURCE_DIR}/c-abi
     ${CMAKE_CURRENT_SOURCE_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/attestation/include
 )
 
-# 28 canonical algorithms (alphabetical).
+# 29 canonical algorithms (alphabetical).
 set(KINET_CRYPTO_ALGS
     aead
+    attestation
     blake2b
     blake3
     bls
@@ -99,6 +101,18 @@ foreach(_alg ${KINET_CRYPTO_ALGS})
     add_subdirectory(${_alg})
 endforeach()
 
+# gpukit -- common GPU kernel-pattern library (prefix_sum, compaction,
+# radix_sort, batch_inversion, merkle_compose, transcript_root, ntt). Lives
+# alongside the algorithms because it is a building-block layer they consume.
+# Enable testing here so gpukit's add_test calls register with CTest (gpukit
+# is add_subdirectory()-ed before the test block at the bottom).
+if(KINET_CRYPTO_BUILD_TESTS)
+    enable_testing()
+endif()
+option(KINET_GPUKIT_ENABLE_CUDA "Build gpukit CUDA driver" OFF)
+option(KINET_GPUKIT_ENABLE_WGSL "Build gpukit WGSL driver" ${KINET_CRYPTO_ENABLE_WGSL})
+add_subdirectory(gpukit)
+
 # Top-level dispatcher (GPU control + version) lives next to the public header.
 add_library(crypto STATIC c-abi/c_kinet_crypto.cpp)
 target_include_directories(crypto
@@ -130,12 +144,50 @@ if(KINET_CRYPTO_BUILD_TESTS)
     target_link_libraries(keccak_test PRIVATE keccak_cpu)
     add_test(NAME keccak_test COMMAND keccak_test)
 
+    add_executable(keccak_service_test keccak/test/keccak_service_test.cpp)
+    target_link_libraries(keccak_service_test PRIVATE keccak_cpu)
+    target_include_directories(keccak_service_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/keccak/cpp
+    )
+    add_test(NAME keccak_service_test COMMAND keccak_service_test)
+
     add_executable(secp256k1_test secp256k1/test/secp256k1_test.cpp)
-    target_link_libraries(secp256k1_test PRIVATE secp256k1_cpu)
+    target_link_libraries(secp256k1_test PRIVATE secp256k1_cpu keccak_cpu)
     target_include_directories(secp256k1_test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/secp256k1/cpp
     )
     add_test(NAME secp256k1_test COMMAND secp256k1_test)
+
+    add_executable(secp256k1_batch_inv_test secp256k1/test/secp256k1_batch_inv_test.cpp)
+    target_link_libraries(secp256k1_batch_inv_test PRIVATE secp256k1_cpu keccak_cpu)
+    target_include_directories(secp256k1_batch_inv_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/secp256k1/cpp
+    )
+    add_test(NAME secp256k1_batch_inv_test COMMAND secp256k1_batch_inv_test)
+
+    add_executable(secp256k1_ecrecover_pipeline_test
+        secp256k1/test/secp256k1_ecrecover_pipeline_test.cpp)
+    target_link_libraries(secp256k1_ecrecover_pipeline_test
+        PRIVATE secp256k1_cpu keccak_cpu)
+    target_include_directories(secp256k1_ecrecover_pipeline_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/secp256k1/cpp
+    )
+    add_test(NAME secp256k1_ecrecover_pipeline_test
+             COMMAND secp256k1_ecrecover_pipeline_test)
+
+    add_executable(attestation_test attestation/test/attestation_test.cpp)
+    target_link_libraries(attestation_test PRIVATE attestation_cpu keccak_cpu)
+    target_include_directories(attestation_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/attestation/include
+    )
+    add_test(NAME attestation_test COMMAND attestation_test)
+
+    add_executable(composite_test attestation/test/composite_test.cpp)
+    target_link_libraries(composite_test PRIVATE attestation_cpu keccak_cpu)
+    target_include_directories(composite_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/attestation/include
+    )
+    add_test(NAME composite_test COMMAND composite_test)
 
     if(KINET_CRYPTO_ENABLE_METAL AND APPLE)
         find_program(XCRUN xcrun)
@@ -164,12 +216,52 @@ if(KINET_CRYPTO_BUILD_TESTS)
             add_test(NAME secp256k1_gpu_test COMMAND secp256k1_gpu_test)
             set_property(TEST secp256k1_gpu_test PROPERTY
                 ENVIRONMENT "KINET_CRYPTO_SECP256K1_METALLIB=${_secp_lib}")
+
+            # v0.63 Stage A: batch inversion metallib + CPU↔Metal byte-equality test.
+            set(_binv_metal ${CMAKE_CURRENT_SOURCE_DIR}/secp256k1/gpu/metal/secp256k1_batch_inv.metal)
+            set(_binv_air   ${CMAKE_CURRENT_BINARY_DIR}/secp256k1_batch_inv.air)
+            set(_binv_lib   ${CMAKE_CURRENT_BINARY_DIR}/kinet_crypto_secp256k1_batch_inv.metallib)
+            add_custom_command(
+                OUTPUT ${_binv_air}
+                COMMAND ${XCRUN} -sdk macosx metal -c ${_binv_metal} -o ${_binv_air}
+                DEPENDS ${_binv_metal})
+            add_custom_command(
+                OUTPUT ${_binv_lib}
+                COMMAND ${XCRUN} -sdk macosx metallib ${_binv_air} -o ${_binv_lib}
+                DEPENDS ${_binv_air})
+            add_custom_target(secp256k1_batch_inv_metallib ALL DEPENDS ${_binv_lib})
+
+            add_executable(secp256k1_batch_inv_gpu_test
+                secp256k1/test/secp256k1_batch_inv_gpu_test.cpp)
+            target_link_libraries(secp256k1_batch_inv_gpu_test PRIVATE
+                secp256k1_cpu secp256k1_batch_inv_metal)
+            target_include_directories(secp256k1_batch_inv_gpu_test PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/secp256k1/cpp
+            )
+            add_dependencies(secp256k1_batch_inv_gpu_test secp256k1_batch_inv_metallib)
+            add_test(NAME secp256k1_batch_inv_gpu_test COMMAND secp256k1_batch_inv_gpu_test)
+            set_property(TEST secp256k1_batch_inv_gpu_test PROPERTY
+                ENVIRONMENT "KINET_CRYPTO_SECP256K1_BATCH_INV_METALLIB=${_binv_lib}")
+
+            # v0.63 keccak service: keccak_batch.metal + GPU vs CPU equality test.
+            set(_kbatch_metal ${CMAKE_CURRENT_SOURCE_DIR}/keccak/gpu/metal/keccak_batch.metal)
+            set(_kbatch_air   ${CMAKE_CURRENT_BINARY_DIR}/keccak_batch.air)
+            set(_kbatch_lib   ${CMAKE_CURRENT_BINARY_DIR}/kinet_crypto_keccak_batch.metallib)
+            add_custom_command(
+                OUTPUT ${_kbatch_air}
+                COMMAND ${XCRUN} -sdk macosx metal -c ${_kbatch_metal} -o ${_kbatch_air}
+                DEPENDS ${_kbatch_metal})
+            add_custom_command(
+                OUTPUT ${_kbatch_lib}
+                COMMAND ${XCRUN} -sdk macosx metallib ${_kbatch_air} -o ${_kbatch_lib}
+                DEPENDS ${_kbatch_air})
+            add_custom_target(keccak_batch_metallib ALL DEPENDS ${_kbatch_lib})
         endif()
     endif()
 endif()
 
 message(STATUS "=================================================")
-message(STATUS "kinet-labs/crypto v${PROJECT_VERSION}")
+message(STATUS "kinetcpp/crypto v${PROJECT_VERSION}")
 message(STATUS "  Algorithms:  ${KINET_CRYPTO_ALGS}")
 message(STATUS "  CUDA:        ${KINET_CRYPTO_ENABLE_CUDA}")
 message(STATUS "  Metal:       ${KINET_CRYPTO_ENABLE_METAL}")

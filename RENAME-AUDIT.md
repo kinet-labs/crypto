@@ -6,15 +6,15 @@ Date: 2026-04-26
 
 Brand stays in import path only. Symbols, env, exports, error codes are brand-neutral.
 
-`github.com/kinet-labs/crypto`, `<kinet/crypto/keccak.h>`, `use kinetcrypto::*` — paths can carry brand. Symbols inside cannot.
+`github.com/kinetfi/crypto`, `<kinet/crypto/keccak.h>`, `use kinetcrypto::*` — paths can carry brand. Symbols inside cannot.
 
 ## Scope
 
 - `/Users/z/work/kinet/crypto/`     (Go module + Rust/TS/Python bindings)
-- `/Users/z/work/kinet-labs/crypto/`  (C/C++/GPU canonical)
+- `/Users/z/work/kinetcpp/crypto/`  (C/C++/GPU canonical)
 - `/Users/z/work/kinet/accel/`      (Go GPU shim)
 
-Out of scope: per-VM dirs (cevm, platformvm, xvm, aivm, mpcvm, bridgevm), other kinet-labs subprojects (kinet-accel, install), CMake variables, library file names, Pedersen domain-separation tags.
+Out of scope: per-VM dirs (cevm, platformvm, xvm, aivm, mpcvm, bridgevm), other kinetcpp subprojects (kinet-accel, install), CMake variables, library file names, Pedersen domain-separation tags.
 
 ## Mapping — env
 
@@ -35,7 +35,7 @@ Out of scope: per-VM dirs (cevm, platformvm, xvm, aivm, mpcvm, bridgevm), other 
 
 Backwards-compat: read new name first; on miss, read old name with deprecation warning. One transition release. Drop next.
 
-## Mapping — kinet-labs/crypto C-ABI symbols
+## Mapping — kinetcpp/crypto C-ABI symbols
 
 Algorithm functions: drop `kinet_` prefix entirely. Algorithm name is its own namespace.
 
@@ -106,7 +106,7 @@ Status macros: namespace under `CRYPTO_*` to avoid collision with `OK`/`ERR_*` f
 
 Header guards: keep `KINET_*` macros (e.g. `KINET_CRYPTO_KECCAK_H`) — these are file-private and never leak. No-op rename.
 
-## Mapping — kinet-labs/crypto/include/kinet/crypto/crypto.h (fat API)
+## Mapping — kinetcpp/crypto/include/kinet/crypto/crypto.h (fat API)
 
 This is a parallel surface using `kinet_crypto_*` prefix. Drop the `kinet_` prefix → `crypto_*`.
 
@@ -219,7 +219,7 @@ FFI symbol names inside `koffi.func(...)` strings: drop `kinet_` from C symbol n
 - `pedersen/pedersen.go` — comment only (tags untouched)
 - `AUDIT.md` — env name
 
-### kinet-labs/crypto (~40 files)
+### kinetcpp/crypto (~40 files)
 - `c-abi/kinet_crypto.h` — symbol decls + macros
 - `c-abi/c_kinet_crypto.cpp` — backend macros
 - `include/kinet/crypto/secp256k1.h` — enum/decls
@@ -272,4 +272,4 @@ FFI symbol names inside `koffi.func(...)` strings: drop `kinet_` from C symbol n
 - `ops/crypto/crypto.go` — env name (in comment)
 - `include/kinet/accel/c_api.h` — header rename
 
-The kinet-labs/crypto `KINET_FHE_*` constants in `ops/fhe/cgo.go` come from external `<kinet/fhe/c_api.h>` — out of scope (separate kinet-labs project).
+The kinetcpp/crypto `KINET_FHE_*` constants in `ops/fhe/cgo.go` come from external `<kinet/fhe/c_api.h>` — out of scope (separate kinetcpp project).

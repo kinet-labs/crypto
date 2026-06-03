@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Fp12 = Fp6[w] / (w^2 - v) for BLS12-381.
 // Layout: struct Fp12 { Fp6 c0, c1; }  ==  blst_fp12 { blst_fp6 fp6[2]; } byte-equal.
 // Element c0 + c1 w  with w^2 = v.

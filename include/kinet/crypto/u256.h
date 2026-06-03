@@ -1,6 +1,4 @@
-/* Copyright (c) 2024-2026 Kinet Industries Inc.
- * SPDX-License-Identifier: BSD-3-Clause-Eco
- *
+/*
  * Internal 256-bit unsigned integer type used by kinet_crypto field arithmetic.
  * Header-only, public layout so GPU drivers can share buffer formats.
  *

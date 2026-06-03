@@ -1,5 +1,5 @@
 # =============================================================================
-# KinetAlgorithm.cmake - per-algorithm helper for kinet-labs/crypto
+# KinetAlgorithm.cmake - per-algorithm helper for kinetcpp/crypto
 # =============================================================================
 #
 # Usage in <alg>/CMakeLists.txt:

@@ -3,7 +3,7 @@
 # This file works in two modes:
 #   1. As a subdirectory of the parent crypto/ project (default; uses kinet_add_algorithm).
 #   2. Standalone for the Stage 1 Fp-tower test:
-#        cmake -S /Users/z/work/kinet-labs/crypto/bls -B build -DCMAKE_BUILD_TYPE=Release
+#        cmake -S /Users/z/work/kinetcpp/crypto/bls -B build -DCMAKE_BUILD_TYPE=Release
 #        cmake --build build --target bls-fp-tower-test
 #        ctest --test-dir build -R bls-fp-tower-test --output-on-failure
 
@@ -125,6 +125,112 @@ if(APPLE)
             message(STATUS "[bls-stage1]   blst:     ${BLST_DIR}/libblst.a")
             message(STATUS "[bls-stage1]   metallib: ${BLS_METALLIB}")
             message(STATUS "[bls-stage1]   vectors:  ${BLS_VEC_HEADER}")
+
+            # =========================================================
+            # Stage 2 — G2 affine/Jacobian + optimal-ate Miller loop.
+            # =========================================================
+
+            # ---- G2 oracle + metallib + test ----
+            add_executable(bls_g2_oracle test/bls_g2_oracle.cpp)
+            target_link_libraries(bls_g2_oracle PRIVATE bls_stage1_blst)
+            target_compile_options(bls_g2_oracle PRIVATE -O3)
+
+            set(BLS_G2_VEC "${CMAKE_CURRENT_BINARY_DIR}/vectors_g2.h")
+            add_custom_command(
+                OUTPUT "${BLS_G2_VEC}"
+                COMMAND $<TARGET_FILE:bls_g2_oracle> "${BLS_G2_VEC}"
+                DEPENDS bls_g2_oracle
+                COMMENT "Generating G2 test vectors via blst")
+            add_custom_target(bls_g2_vectors DEPENDS "${BLS_G2_VEC}")
+
+            set(BLS_G2_AIR "${CMAKE_CURRENT_BINARY_DIR}/bls_g2.air")
+            add_custom_command(
+                OUTPUT "${BLS_G2_AIR}"
+                COMMAND ${XCRUN} -sdk macosx metal -O3 -ffast-math
+                        -I "${BLS_METAL_DIR}"
+                        -c "${BLS_METAL_DIR}/bls_g2.metal" -o "${BLS_G2_AIR}"
+                DEPENDS "${BLS_METAL_DIR}/bls_g2.metal"
+                        "${BLS_METAL_DIR}/bls_fp2.metal"
+                        "${BLS_METAL_DIR}/bls_fp_ops.h.metal"
+                COMMENT "metal -c bls_g2.metal")
+
+            set(BLS_G2_METALLIB "${CMAKE_CURRENT_BINARY_DIR}/bls_g2.metallib")
+            add_custom_command(
+                OUTPUT "${BLS_G2_METALLIB}"
+                COMMAND ${XCRUN} -sdk macosx metallib "${BLS_G2_AIR}"
+                        -o "${BLS_G2_METALLIB}"
+                DEPENDS "${BLS_G2_AIR}"
+                COMMENT "metallib bls_g2.metallib")
+            add_custom_target(bls_g2_metallib DEPENDS "${BLS_G2_METALLIB}")
+
+            add_executable(bls_g2_test test/bls_g2_test.mm)
+            target_include_directories(bls_g2_test
+                PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+            target_compile_options(bls_g2_test PRIVATE -O3 -fobjc-arc)
+            add_dependencies(bls_g2_test bls_g2_vectors bls_g2_metallib)
+            target_link_libraries(bls_g2_test PRIVATE
+                "-framework Metal" "-framework Foundation")
+
+            add_test(NAME bls-g2-test
+                COMMAND bls_g2_test "${BLS_G2_METALLIB}")
+
+            add_custom_target(bls-g2-test
+                DEPENDS bls_g2_test bls_g2_metallib bls_g2_vectors)
+
+            # ---- Miller-loop oracle + metallib + test ----
+            add_executable(bls_miller_oracle test/bls_miller_oracle.cpp)
+            target_link_libraries(bls_miller_oracle PRIVATE bls_stage1_blst)
+            target_compile_options(bls_miller_oracle PRIVATE -O3)
+
+            set(BLS_MILLER_VEC "${CMAKE_CURRENT_BINARY_DIR}/vectors_miller.h")
+            add_custom_command(
+                OUTPUT "${BLS_MILLER_VEC}"
+                COMMAND $<TARGET_FILE:bls_miller_oracle> "${BLS_MILLER_VEC}"
+                DEPENDS bls_miller_oracle
+                COMMENT "Generating Miller-loop test vectors via blst")
+            add_custom_target(bls_miller_vectors DEPENDS "${BLS_MILLER_VEC}")
+
+            set(BLS_MILLER_AIR "${CMAKE_CURRENT_BINARY_DIR}/bls_miller.air")
+            add_custom_command(
+                OUTPUT "${BLS_MILLER_AIR}"
+                COMMAND ${XCRUN} -sdk macosx metal -O3 -ffast-math
+                        -I "${BLS_METAL_DIR}"
+                        -c "${BLS_METAL_DIR}/bls_miller.metal"
+                        -o "${BLS_MILLER_AIR}"
+                DEPENDS "${BLS_METAL_DIR}/bls_miller.metal"
+                        "${BLS_METAL_DIR}/bls_g2.metal"
+                        "${BLS_METAL_DIR}/bls_fp12.metal"
+                        "${BLS_METAL_DIR}/bls_fp6.metal"
+                        "${BLS_METAL_DIR}/bls_fp2.metal"
+                        "${BLS_METAL_DIR}/bls_fp_ops.h.metal"
+                COMMENT "metal -c bls_miller.metal")
+
+            set(BLS_MILLER_METALLIB "${CMAKE_CURRENT_BINARY_DIR}/bls_miller.metallib")
+            add_custom_command(
+                OUTPUT "${BLS_MILLER_METALLIB}"
+                COMMAND ${XCRUN} -sdk macosx metallib "${BLS_MILLER_AIR}"
+                        -o "${BLS_MILLER_METALLIB}"
+                DEPENDS "${BLS_MILLER_AIR}"
+                COMMENT "metallib bls_miller.metallib")
+            add_custom_target(bls_miller_metallib DEPENDS "${BLS_MILLER_METALLIB}")
+
+            add_executable(bls_miller_test test/bls_miller_test.mm)
+            target_include_directories(bls_miller_test
+                PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+            target_compile_options(bls_miller_test PRIVATE -O3 -fobjc-arc)
+            add_dependencies(bls_miller_test bls_miller_vectors bls_miller_metallib)
+            target_link_libraries(bls_miller_test PRIVATE
+                "-framework Metal" "-framework Foundation")
+
+            add_test(NAME bls-miller-test
+                COMMAND bls_miller_test "${BLS_MILLER_METALLIB}")
+
+            add_custom_target(bls-miller-test
+                DEPENDS bls_miller_test bls_miller_metallib bls_miller_vectors)
+
+            message(STATUS "[bls-stage2] enabled (Metal)")
+            message(STATUS "[bls-stage2]   g2 metallib:     ${BLS_G2_METALLIB}")
+            message(STATUS "[bls-stage2]   miller metallib: ${BLS_MILLER_METALLIB}")
         endif()
     else()
         message(STATUS "[bls-stage1] skipped — blst not found at ${BLST_DIR}")

@@ -3,7 +3,7 @@
 // =============================================================================
 // CPU body in cpp/bls.cpp links blst (vendored at cevm level only). Phase 3
 // authors a first-class CPU implementation here. The legacy crypto.cpp at
-// kinet-labs/crypto/src/crypto.cpp still implements kinet_crypto_bls_* with the old
+// kinetcpp/crypto/src/crypto.cpp still implements kinet_crypto_bls_* with the old
 // names; until Phase 4 wires consumers to the new symbols, both coexist.
 // =============================================================================
 

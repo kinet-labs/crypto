@@ -12,7 +12,7 @@ export const baseOptions: Partial<DocsLayoutProps> = {
     },
     {
       text: 'GitHub',
-      url: 'https://github.com/kinet-labs/crypto',
+      url: 'https://github.com/kinetfi/crypto',
     },
   ],
 };

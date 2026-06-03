@@ -3,6 +3,8 @@
 // =============================================================================
 // CUDA port of ntt_metal_kernel.metal -- byte-identical arithmetic output.
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <cstdint>
 

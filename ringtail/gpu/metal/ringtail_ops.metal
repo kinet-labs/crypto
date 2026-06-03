@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Partners Limited
-// SPDX-License-Identifier: BSD-3-Clause
-//
 // Ringtail Lattice Threshold Operations - Metal Implementation
 // Post-quantum threshold signatures based on Module-LWE (MLWE).
 

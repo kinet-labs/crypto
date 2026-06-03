@@ -14,6 +14,8 @@
 //   - EIP-4844: Shard Blob Transactions
 //   - KZG Commitments paper (Kate, Zaverucha, Goldberg 2010)
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <metal_stdlib>
 using namespace metal;

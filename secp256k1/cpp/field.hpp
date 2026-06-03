@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // First-party Montgomery field arithmetic for secp256k1.
 //   Fp (base field):  y^2 = x^3 + 7 mod p, p = 2^256 - 2^32 - 977
 //   Fn (scalar field): n = curve order

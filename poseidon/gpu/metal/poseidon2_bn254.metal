@@ -18,6 +18,8 @@
 //   - gnark-crypto: github.com/consensys/gnark-crypto
 //   - Poseidon2 paper: https://eprint.iacr.org/2023/323
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <metal_stdlib>
 using namespace metal;

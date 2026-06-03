@@ -5,6 +5,8 @@
 // Poseidon2 hash function optimized for zero-knowledge proof systems.
 // GPU-accelerated with Metal compute shaders.
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>

@@ -2,6 +2,8 @@
 // Metal ZK Accelerator Implementation
 // =============================================================================
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #include "zk_metal.h"
 

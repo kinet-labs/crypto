@@ -1,11 +1,11 @@
 // =============================================================================
-// kinet-labs/crypto - canonical public C ABI
+// kinetcpp/crypto - canonical public C ABI
 // =============================================================================
 //
-// This is the single public C entry point for all algorithms in kinet-labs/crypto.
+// This is the single public C entry point for all algorithms in kinetcpp/crypto.
 // Consumed by:
-//   - kinet-labs/crypto (Go cgo)
-//   - kinet-labs/kinet  (Go cgo)
+//   - kinetfi/crypto (Go cgo)
+//   - kinetfi/kinet  (Go cgo)
 //   - hanzoai/node (Go cgo)
 //   - zooai/node   (Go cgo)
 //   - any Rust caller (via bindgen)
@@ -38,6 +38,8 @@
 // unified surface is reachable as <kinet_crypto.h>.
 #include "kinet/crypto/keccak.h"     /* keccak256 */
 #include "kinet/crypto/secp256k1.h"  /* secp256k1_ecrecover{,_verify,_batch} */
+#include "kinet/crypto/attestation/attestation.h"  /* attestation_parse_{sev_snp,tdx,nv} */
+#include "kinet/crypto/attestation/composite.h"    /* attestation_compute_composite_root */
 
 #ifdef __cplusplus
 extern "C" {

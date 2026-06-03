@@ -14,6 +14,8 @@
 //   - EIP-196, EIP-197 (Ethereum precompiles)
 //   - Zcash BN-254 specification
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <metal_stdlib>
 using namespace metal;

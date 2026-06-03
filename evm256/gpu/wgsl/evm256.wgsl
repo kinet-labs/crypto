@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // EVM uint256 parallel operations in WGSL.
 // uint256 = 8 x u32 limbs (little-endian, since WGSL has no u64).
 // Matches evm256.metal output byte-for-byte.

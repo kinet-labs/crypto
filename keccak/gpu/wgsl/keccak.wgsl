@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Keccak-256 (Ethereum variant) compute shader in WGSL.
 //
 // One thread per hash. Each thread reads its input descriptor, absorbs the

@@ -5,6 +5,8 @@
 // Objective-C++ implementation for Metal compute shader dispatch.
 // Uses GTable precomputation for ~20x faster scalar multiplication.
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
