@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Build-time oracle for the BLS12-381 optimal-ate Miller loop.
 // Emits vectors_miller.h with 100 random (P, Q) inputs and the matching
 // blst_miller_loop output (576-byte Fp12 each), pre-final-exponentiation.

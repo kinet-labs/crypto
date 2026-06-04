@@ -1,6 +1,4 @@
-/* Copyright (c) 2024-2026 Kinet Industries Inc.
- * SPDX-License-Identifier: BSD-3-Clause-Eco
- *
+/*
  * Stream compaction. Stable -- preserves the original index order of selected
  * elements. Returns the number of selected elements (n_out).
  */

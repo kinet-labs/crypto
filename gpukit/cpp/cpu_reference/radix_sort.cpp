@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // CPU LSD radix sort -- 8-bit pass over each byte. Stable.
 //
 // Allocates n elements of scratch on the stack via std::vector. The sort is

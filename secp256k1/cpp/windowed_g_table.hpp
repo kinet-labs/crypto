@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Windowed precomputation of multiples of G for fast u1*G in ecrecover.
 //
 // We use a fixed window width w = 4 across CPU, Metal, CUDA and WGSL so that

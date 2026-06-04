@@ -1,6 +1,4 @@
-/* Copyright (c) 2024-2026 Kinet Industries Inc.
- * SPDX-License-Identifier: BSD-3-Clause-Eco
- *
+/*
  * Parallel binary Merkle tree with Keccak-256 inner hash.
  *
  * Layout:

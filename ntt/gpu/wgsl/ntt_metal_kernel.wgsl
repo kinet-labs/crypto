@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // NTT with shared memory twiddle prefetch in WGSL.
 // Ported from ntt_metal_kernel.metal.
 // Single NTT stage with workgroup-local twiddle cache.

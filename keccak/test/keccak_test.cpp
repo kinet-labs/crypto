@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Test vectors for keccak256 (Ethereum-style Keccak-256 with delimiter 0x01).
 // Vectors taken from the original Keccak team's reference (publicly published).
 

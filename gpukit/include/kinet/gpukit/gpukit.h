@@ -1,6 +1,4 @@
-/* Copyright (c) 2024-2026 Kinet Industries Inc.
- * SPDX-License-Identifier: BSD-3-Clause-Eco
- *
+/*
  * gpukit -- common GPU kernel-pattern library.
  *
  * Every primitive follows expand_inputs / parallel_eval / reduce / commit_root.

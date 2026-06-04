@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Metal driver for batch secp256k1 ecrecover. macOS / iOS / iPadOS only.
 //
 // Loads the precompiled metallib produced from kernels.metal, dispatches one

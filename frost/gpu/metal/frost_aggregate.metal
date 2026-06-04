@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // FROST (Flexible Round-Optimized Schnorr Threshold) Signature Aggregation
 // GPU-accelerated threshold signature operations for Ed25519/secp256k1
 // Optimized for Apple Silicon GPUs

@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // AMD SEV-SNP attestation report parser.
 //
 // The PSP-signed report is a fixed 1184-byte structure described in AMD

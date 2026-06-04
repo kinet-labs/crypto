@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Parallel binary Merkle tree -- CPU reference. Keccak-256 inner hash.
 //
 // Layout: leaves are 32-byte values, consumed in input order. Tree is

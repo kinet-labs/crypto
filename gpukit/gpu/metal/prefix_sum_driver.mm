@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Metal driver for prefix_sum (u32 / u64). Two-pass when N > BLOCK_SIZE.
 
 #if __APPLE__ && __OBJC__

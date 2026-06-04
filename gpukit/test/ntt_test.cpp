@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // NTT harness. CPU correctness via inverse(forward(x)) == x. Negacyclic mul
 // validated via schoolbook reference (which is also the CPU implementation
 // itself; the harness checks ring identity: a*1 = a).

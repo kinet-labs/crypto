@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Ringtail Lattice-Based Threshold Signature Verification
 // Batch verification of Ringtail signatures with polynomial norm checks
 // Optimized for Apple Silicon GPUs

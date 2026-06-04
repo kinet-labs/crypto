@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // CUDA radix sort (LSD, 8-bit pass) -- skeleton. Compile-only on Apple host.
 
 #include "kinet/gpukit/radix_sort.h"

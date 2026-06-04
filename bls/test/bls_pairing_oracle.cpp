@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Build-time oracle for BLS12-381 full pairing test.
 // Emits vectors_pairing.h covering 8 categories from STAGES.md:
 //

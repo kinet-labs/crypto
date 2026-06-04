@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Montgomery batch inversion for secp256k1 base field (Fp) and scalar field (Fn).
 //
 // Given inputs z_0, z_1, ..., z_{n-1} compute all z_i^{-1} with one field

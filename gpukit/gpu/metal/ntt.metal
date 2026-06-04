@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Skeleton entry points for forward NTT (Kyber/Dilithium) -- v1.2 work.
 
 #include <metal_stdlib>

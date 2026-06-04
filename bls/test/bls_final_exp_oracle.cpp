@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Build-time oracle for BLS12-381 final exponentiation.
 // Emits vectors_final_exp.h with 100 random Fp12 inputs (in cyclotomic-friendly
 // form, i.e. obtained via blst_miller_loop on random (P, Q) pairs so they are

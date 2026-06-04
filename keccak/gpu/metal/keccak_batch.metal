@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // GPU-batched Keccak-256 (Ethereum, delimiter 0x01) using the KeccakJob[]
 // shape. One thread per job; the job descriptor tells the thread where its
 // input lives in the flat input buffer and where to write the 32-byte output.

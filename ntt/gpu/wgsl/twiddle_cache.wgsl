@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-2-Clause
-//
 // Twiddle Hotset Caching — WGSL compute shaders
 // Ported from twiddle_cache.metal.
 // NTT kernels with intelligent twiddle caching for different memory tiers.

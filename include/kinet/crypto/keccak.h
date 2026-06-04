@@ -1,6 +1,4 @@
-/* Copyright (c) 2024-2026 Kinet Industries Inc.
- * SPDX-License-Identifier: BSD-3-Clause-Eco
- *
+/*
  * Keccak-256 (Ethereum hash). First-party implementation per Keccak Reference
  * v3.0 (Bertoni-Daemen-Peeters-Van Assche) -- the pre-FIPS-202 padding scheme
  * with delimiter 0x01 used by Ethereum, NOT the FIPS-202 SHA3-256 padding

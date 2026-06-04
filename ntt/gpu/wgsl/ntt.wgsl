@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Shared NTT (Number Theoretic Transform) compute shader in WGSL.
 //
 // Forward and inverse NTT for lattice-based PQ crypto.

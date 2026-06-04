@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // WGSL prefix_sum driver.
 //
 // v1.1 of gpukit ships the WGSL shader source files but does not yet wire up

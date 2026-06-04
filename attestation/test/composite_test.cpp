@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Tests for composite attestation_root computation and baseline verification.
 
 #include "kinet/crypto/attestation/composite.h"

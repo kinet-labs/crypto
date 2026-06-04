@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Polynomial multiplication in WGSL, ported from poly_mul.metal.
 // Schoolbook and NTT-based multiplication for lattice cryptography.
 // u64 emulated as vec2<u32>(lo, hi).

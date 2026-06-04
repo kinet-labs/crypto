@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Metal-side test driver for the BLS12-381 optimal-ate Miller loop.
 //
 // The loop is split across four bounded kernels (init, step_add, step_dbl,

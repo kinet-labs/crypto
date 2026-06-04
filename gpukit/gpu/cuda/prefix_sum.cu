@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // CUDA prefix sum (inclusive scan) -- u32 / u64.
 //
 // Two-stage: per-block Hillis-Steele scan, then add block-prefix on a second

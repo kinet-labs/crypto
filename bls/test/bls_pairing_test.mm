@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Metal-side test driver for the full BLS12-381 pairing across 8 categories.
 // Pipeline: miller_loop (6 kernels) → final_exp (5 kernels) → pairing helpers.
 // All arithmetic on Metal; host orchestrates dispatches.

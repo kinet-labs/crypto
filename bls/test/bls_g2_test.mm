@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Metal-side test driver for the BLS12-381 G2 kernels.
 // Loads bls_g2.metallib (built from bls_g2.metal), dispatches each kernel
 // over the oracle-provided inputs, and byte-compares against blst output.

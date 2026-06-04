@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // BLS12-381 final exponentiation on Metal.
 //
 // Computes f^((p^12 - 1) / r) byte-equal to blst_final_exp.  Algorithm mirrors

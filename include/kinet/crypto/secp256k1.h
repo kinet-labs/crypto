@@ -1,6 +1,4 @@
-/* Copyright (c) 2024-2026 Kinet Industries Inc.
- * SPDX-License-Identifier: BSD-3-Clause-Eco
- *
+/*
  * secp256k1 — first-party C ABI.
  *
  * No external crypto libraries. No vendored code. No runtime dependencies.

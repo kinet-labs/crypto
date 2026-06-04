@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Build-time oracle for G2 = E'(Fp2) operations on BLS12-381.
 // Emits vectors_g2.h with input + expected-output bytes for the Metal test.
 //

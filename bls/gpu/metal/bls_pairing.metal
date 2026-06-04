@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // BLS12-381 full pairing on Metal.
 //
 //   e(P, Q) = final_exp( miller_loop(P, Q) )

@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Metal driver for stream compaction. Uses prefix_sum kernels (loaded from the
 // same metallib) for the scan stage.
 

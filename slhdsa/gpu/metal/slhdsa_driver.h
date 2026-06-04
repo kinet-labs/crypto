@@ -11,8 +11,6 @@
 //   - Batch signature verification
 //   - Parallel SHAKE/SHA2 operations
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #ifndef KINET_METAL_SLHDSA_H
 #define KINET_METAL_SLHDSA_H

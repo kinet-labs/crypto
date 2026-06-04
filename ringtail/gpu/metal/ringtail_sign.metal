@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Ringtail Lattice-Based Threshold Signatures
 // GPU-accelerated MLWE-based threshold signing operations
 // Optimized for Apple Silicon GPUs

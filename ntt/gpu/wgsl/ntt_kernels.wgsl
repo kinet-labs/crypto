@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Optimal NTT kernels for Kinet FHE in WGSL, ported from ntt_kernels.metal.
 // Forward/inverse NTT stages with Barrett reduction.
 // u64 emulated via vec2<u32>(lo, hi).

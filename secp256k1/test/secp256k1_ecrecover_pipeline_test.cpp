@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Tests for the v0.63 7-stage ecrecover pipeline.
 //
 //   1. RFC 6979 §A.2.5 vector

@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // NVIDIA NRAS attestation evidence parser.
 //
 // NVIDIA Remote Attestation Service (NRAS) returns a structured blob

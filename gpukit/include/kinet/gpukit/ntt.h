@@ -1,6 +1,4 @@
-/* Copyright (c) 2024-2026 Kinet Industries Inc.
- * SPDX-License-Identifier: BSD-3-Clause-Eco
- *
+/*
  * Number-theoretic transform (NTT) parametric over modulus.
  *
  * Two prime moduli ship in this version, both used by lattice + FHE schemes:
