@@ -3,7 +3,7 @@
 # This file works in two modes:
 #   1. As a subdirectory of the parent crypto/ project (default; uses kinet_add_algorithm).
 #   2. Standalone for the Stage 1 Fp-tower test:
-#        cmake -S /Users/z/work/kinetcpp/crypto/bls -B build -DCMAKE_BUILD_TYPE=Release
+#        cmake -S /Users/z/work/kinet-labs/crypto/bls -B build -DCMAKE_BUILD_TYPE=Release
 #        cmake --build build --target bls-fp-tower-test
 #        ctest --test-dir build -R bls-fp-tower-test --output-on-failure
 
@@ -231,6 +231,131 @@ if(APPLE)
             message(STATUS "[bls-stage2] enabled (Metal)")
             message(STATUS "[bls-stage2]   g2 metallib:     ${BLS_G2_METALLIB}")
             message(STATUS "[bls-stage2]   miller metallib: ${BLS_MILLER_METALLIB}")
+
+            # =========================================================
+            # Stage 3 — final_exp + full pairing on Metal.
+            # =========================================================
+
+            # ---- final_exp oracle + metallib + test ----
+            add_executable(bls_final_exp_oracle test/bls_final_exp_oracle.cpp)
+            target_link_libraries(bls_final_exp_oracle PRIVATE bls_stage1_blst)
+            target_compile_options(bls_final_exp_oracle PRIVATE -O3)
+
+            set(BLS_FE_VEC "${CMAKE_CURRENT_BINARY_DIR}/vectors_final_exp.h")
+            add_custom_command(
+                OUTPUT "${BLS_FE_VEC}"
+                COMMAND $<TARGET_FILE:bls_final_exp_oracle> "${BLS_FE_VEC}"
+                DEPENDS bls_final_exp_oracle
+                COMMENT "Generating final_exp test vectors via blst")
+            add_custom_target(bls_final_exp_vectors DEPENDS "${BLS_FE_VEC}")
+
+            set(BLS_FE_AIR "${CMAKE_CURRENT_BINARY_DIR}/bls_final_exp.air")
+            add_custom_command(
+                OUTPUT "${BLS_FE_AIR}"
+                COMMAND ${XCRUN} -sdk macosx metal -O3 -ffast-math
+                        -I "${BLS_METAL_DIR}"
+                        -c "${BLS_METAL_DIR}/bls_final_exp.metal"
+                        -o "${BLS_FE_AIR}"
+                DEPENDS "${BLS_METAL_DIR}/bls_final_exp.metal"
+                        "${BLS_METAL_DIR}/bls_fp12.metal"
+                        "${BLS_METAL_DIR}/bls_fp6.metal"
+                        "${BLS_METAL_DIR}/bls_fp2.metal"
+                        "${BLS_METAL_DIR}/bls_fp_ops.h.metal"
+                COMMENT "metal -c bls_final_exp.metal")
+
+            set(BLS_FE_METALLIB "${CMAKE_CURRENT_BINARY_DIR}/bls_final_exp.metallib")
+            add_custom_command(
+                OUTPUT "${BLS_FE_METALLIB}"
+                COMMAND ${XCRUN} -sdk macosx metallib "${BLS_FE_AIR}"
+                        -o "${BLS_FE_METALLIB}"
+                DEPENDS "${BLS_FE_AIR}"
+                COMMENT "metallib bls_final_exp.metallib")
+            add_custom_target(bls_final_exp_metallib DEPENDS "${BLS_FE_METALLIB}")
+
+            add_executable(bls_final_exp_test test/bls_final_exp_test.mm)
+            target_include_directories(bls_final_exp_test
+                PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+            target_compile_options(bls_final_exp_test PRIVATE -O3 -fobjc-arc)
+            add_dependencies(bls_final_exp_test
+                bls_final_exp_vectors bls_final_exp_metallib)
+            target_link_libraries(bls_final_exp_test PRIVATE
+                "-framework Metal" "-framework Foundation")
+
+            add_test(NAME bls-final-exp-test
+                COMMAND bls_final_exp_test "${BLS_FE_METALLIB}")
+
+            add_custom_target(bls-final-exp-test
+                DEPENDS bls_final_exp_test bls_final_exp_metallib
+                        bls_final_exp_vectors)
+
+            # ---- Pairing: combined metallib (miller + final_exp + pairing) ----
+            # The pairing test driver chains Miller-loop and final_exp kernels
+            # in a single command queue, so all kernels live in one metallib.
+            set(BLS_PAIR_METAL_FILES
+                "${BLS_METAL_DIR}/bls_miller.metal"
+                "${BLS_METAL_DIR}/bls_final_exp.metal"
+                "${BLS_METAL_DIR}/bls_pairing.metal")
+
+            set(BLS_PAIR_AIR_FILES)
+            foreach(SRC ${BLS_PAIR_METAL_FILES})
+                get_filename_component(STEM ${SRC} NAME_WE)
+                set(AIR "${CMAKE_CURRENT_BINARY_DIR}/${STEM}_pair.air")
+                list(APPEND BLS_PAIR_AIR_FILES "${AIR}")
+                add_custom_command(
+                    OUTPUT "${AIR}"
+                    COMMAND ${XCRUN} -sdk macosx metal -O3 -ffast-math
+                            -I "${BLS_METAL_DIR}"
+                            -c "${SRC}" -o "${AIR}"
+                    DEPENDS "${SRC}"
+                            "${BLS_METAL_DIR}/bls_g2.metal"
+                            "${BLS_METAL_DIR}/bls_fp12.metal"
+                            "${BLS_METAL_DIR}/bls_fp6.metal"
+                            "${BLS_METAL_DIR}/bls_fp2.metal"
+                            "${BLS_METAL_DIR}/bls_fp_ops.h.metal"
+                    COMMENT "metal -c ${STEM}.metal (pair build)")
+            endforeach()
+
+            set(BLS_PAIR_METALLIB "${CMAKE_CURRENT_BINARY_DIR}/bls_pairing.metallib")
+            add_custom_command(
+                OUTPUT "${BLS_PAIR_METALLIB}"
+                COMMAND ${XCRUN} -sdk macosx metallib ${BLS_PAIR_AIR_FILES}
+                        -o "${BLS_PAIR_METALLIB}"
+                DEPENDS ${BLS_PAIR_AIR_FILES}
+                COMMENT "metallib bls_pairing.metallib")
+            add_custom_target(bls_pairing_metallib DEPENDS "${BLS_PAIR_METALLIB}")
+
+            # ---- pairing oracle + test ----
+            add_executable(bls_pairing_oracle test/bls_pairing_oracle.cpp)
+            target_link_libraries(bls_pairing_oracle PRIVATE bls_stage1_blst)
+            target_compile_options(bls_pairing_oracle PRIVATE -O3)
+
+            set(BLS_PAIR_VEC "${CMAKE_CURRENT_BINARY_DIR}/vectors_pairing.h")
+            add_custom_command(
+                OUTPUT "${BLS_PAIR_VEC}"
+                COMMAND $<TARGET_FILE:bls_pairing_oracle> "${BLS_PAIR_VEC}"
+                DEPENDS bls_pairing_oracle
+                COMMENT "Generating pairing test vectors via blst")
+            add_custom_target(bls_pairing_vectors DEPENDS "${BLS_PAIR_VEC}")
+
+            add_executable(bls_pairing_test test/bls_pairing_test.mm)
+            target_include_directories(bls_pairing_test
+                PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
+            target_compile_options(bls_pairing_test PRIVATE -O3 -fobjc-arc)
+            add_dependencies(bls_pairing_test
+                bls_pairing_vectors bls_pairing_metallib)
+            target_link_libraries(bls_pairing_test PRIVATE
+                "-framework Metal" "-framework Foundation")
+
+            add_test(NAME bls-pairing-test
+                COMMAND bls_pairing_test "${BLS_PAIR_METALLIB}")
+
+            add_custom_target(bls-pairing-test
+                DEPENDS bls_pairing_test bls_pairing_metallib
+                        bls_pairing_vectors)
+
+            message(STATUS "[bls-stage3] enabled (Metal)")
+            message(STATUS "[bls-stage3]   final_exp metallib: ${BLS_FE_METALLIB}")
+            message(STATUS "[bls-stage3]   pairing metallib:   ${BLS_PAIR_METALLIB}")
         endif()
     else()
         message(STATUS "[bls-stage1] skipped — blst not found at ${BLST_DIR}")

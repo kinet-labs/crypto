@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // BLS12-381 optimal-ate Miller loop on Metal.
 //
 // Inputs:
@@ -26,7 +29,13 @@
 // This matches blst's vec384fp6 line[3] convention used in pairing.c +
 // fp12_tower.c::mul_by_xy00z0_fp12.
 
+#define BLS_FP12_NO_KERNELS
+#define BLS_FP6_NO_KERNELS
+#define BLS_FP2_NO_KERNELS
 #include "bls_fp12.metal"
+#undef BLS_FP12_NO_KERNELS
+#undef BLS_FP6_NO_KERNELS
+#undef BLS_FP2_NO_KERNELS
 
 #define BLS_FP2_NO_KERNELS
 #define BLS_FP6_NO_KERNELS

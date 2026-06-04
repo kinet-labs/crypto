@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // LSD radix sort, 8-bit per pass. The kernel performs one pass:
 //   * count: histogram a single byte position across lanes
 //   * scan host-side  (driver runs prefix_sum_block_u32)

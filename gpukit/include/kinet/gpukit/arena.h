@@ -1,4 +1,6 @@
-/*
+/* Copyright (c) 2024-2026 Kinet Industries Inc.
+ * SPDX-License-Identifier: BSD-3-Clause-Eco
+ *
  * Linear arena allocator. Used by GPU drivers to pack staging buffers without
  * malloc churn. CPU-only -- GPU buffers are allocated by the per-backend driver.
  */

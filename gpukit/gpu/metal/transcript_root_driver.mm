@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Metal transcript_root driver -- v1.1 ships CPU only. Keccak sponge is
 // inherently serial within a single transcript; the GPU win comes from
 // processing multiple transcripts in parallel. That batch entry point is

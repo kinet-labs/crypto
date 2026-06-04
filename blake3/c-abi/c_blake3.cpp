@@ -1,6 +1,6 @@
 // =============================================================================
 // blake3 - C ABI (Phase 1 stub).
-// CPU body lives in legacy kinetcpp/crypto/src/crypto.cpp (crypto_blake3); a
+// CPU body lives in legacy kinet-labs/crypto/src/crypto.cpp (crypto_blake3); a
 // first-class CPU implementation lands in Phase 3.
 // =============================================================================
 

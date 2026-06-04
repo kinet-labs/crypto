@@ -5,8 +5,6 @@
 // Implementation of ML-KEM (FIPS 203) with Metal GPU acceleration.
 // Falls back to CPU implementation when GPU is not available.
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #include "kinet/crypto/metal_mlkem.h"
 #include <cstdlib>

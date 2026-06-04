@@ -1,4 +1,6 @@
-/*
+/* Copyright (c) 2024-2026 Kinet Industries Inc.
+ * SPDX-License-Identifier: BSD-3-Clause-Eco
+ *
  * Stable LSD radix sort over u32/u64 keys. Ascending order.
  *
  * Caller supplies an aux buffer of the same length as the input; the sorted

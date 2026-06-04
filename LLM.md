@@ -1,9 +1,9 @@
-# kinetcpp/crypto - canonical native + GPU crypto
+# kinet-labs/crypto - canonical native + GPU crypto
 
 **Last Updated**: 2026-04-26
-**Module**: `kinetcpp/crypto`
+**Module**: `kinet-labs/crypto`
 **Role**: First-party CPU + GPU cryptographic primitives. Single source of
-truth for every algorithm consumed by Go (kinetfi/crypto), Rust, C++, and
+truth for every algorithm consumed by Go (kinet-labs/crypto), Rust, C++, and
 Metal/CUDA/WGSL.
 
 ## Layout
@@ -11,7 +11,7 @@ Metal/CUDA/WGSL.
 One directory per algorithm, identical shape:
 
 ```
-kinetcpp/crypto/
+kinet-labs/crypto/
   c-abi/
     kinet_crypto.h            public umbrella header (Go cgo + Rust bindgen)
     c_kinet_crypto.cpp        top-level dispatcher (GPU control + version)
@@ -68,9 +68,9 @@ kinetcpp/crypto/
 | 28 | sr25519 | placeholder | -- | stub |
 | 29 | verkle | placeholder | -- | stub |
 
-"first-party" = algorithm body authored under kinetcpp/crypto with no third-party
+"first-party" = algorithm body authored under kinet-labs/crypto with no third-party
 crypto library. "cevm body" = source file relocated from
-`kinetcpp/cevm/lib/cevm_precompiles/`; those compile against `intx` and
+`kinet-labs/cevm/lib/cevm_precompiles/`; those compile against `intx` and
 sometimes `blst`. Phase 3 ports them to first-party.
 
 ## Build
@@ -129,7 +129,7 @@ parsers ship before live hardware is on hand and are exercised against
 synthesized fixtures. Real-RIM verification (signed manifest + X.509 chain)
 lands when we have a trust anchor on file.
 
-The Go mirror lives at `kinetfi/kms/pkg/attestation`; cross-language parity is
+The Go mirror lives at `kinet-labs/kms/pkg/attestation`; cross-language parity is
 proven by `TestCompositeRoot_MatchesCABI` (canonical root pinned to
 `56f1d8e537973913091159c532ecc657f3e0cd63946dfcaea831d42a62682152`).
 
@@ -181,9 +181,9 @@ existing `secp256k1_test`, `secp256k1_gpu_test`, `keccak_test` = 7/7.
 - Phase 3: port the cevm bodies (intx + blst dependencies) to first-party
   implementations under each `<alg>/cpp/`. Implement non-stub C-ABI shims for
   every placeholder.
-- Phase 4: rewire downstream consumers (kinetfi/crypto cgo, hanzo/node, zoo/node,
+- Phase 4: rewire downstream consumers (kinet-labs/crypto cgo, hanzo/node, zoo/node,
   kinet/node) to consume the unified `kinet_crypto.h` surface.
-- Phase 5: delete `kinetcpp/cevm/lib/cevm_precompiles/` and `kinetcpp/gpu/kernels/`
+- Phase 5: delete `kinet-labs/cevm/lib/cevm_precompiles/` and `kinet-labs/gpu/kernels/`
   after every consumer is on the new path.
 
 ## Rules
@@ -193,7 +193,7 @@ existing `secp256k1_test`, `secp256k1_gpu_test`, `keccak_test` = 7/7.
 3. Stub C-ABI shims return `CRYPTO_ERR_NOTIMPL`. They are not exercised by tests.
 4. One way to do everything: a caller never has to choose between two
    identical-looking entry points.
-5. Originals at `kinetcpp/cevm/lib/cevm_precompiles/` and `kinetcpp/gpu/kernels/`
+5. Originals at `kinet-labs/cevm/lib/cevm_precompiles/` and `kinet-labs/gpu/kernels/`
    stay until Phase 5 sweeps them.
 
 ---

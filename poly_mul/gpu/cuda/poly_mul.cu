@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc. All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
 // Polynomial Multiplication - CUDA Port of poly_mul.metal
 // Byte-identical output. Supports schoolbook and NTT-based multiplication.
 

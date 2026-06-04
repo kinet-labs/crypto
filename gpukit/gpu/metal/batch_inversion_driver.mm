@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Metal batch_inversion driver -- v1.1 ships CPU only. The Montgomery batch
 // inversion kernels for 256-bit (secp256k1, BN254) and 384-bit (BLS12-381)
 // fields are owned by the BLS Stage 3+ port (sibling agent), which will land

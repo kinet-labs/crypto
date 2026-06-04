@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Metal NTT driver -- v1.1 ships CPU only. Forward and inverse NTT on Metal
 // is straightforward (radix-2 butterfly with bit-reversed roots) but pinning
 // it byte-equal across Apple's tile schedulers requires a deterministic warp

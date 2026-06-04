@@ -10,8 +10,6 @@
 // This header provides the interface used by the Go precompile via cgo.
 // Implementation uses Metal (macOS) or CUDA (Linux) backends.
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #ifndef KINET_CRYPTO_METAL_AI_H
 #define KINET_CRYPTO_METAL_AI_H
@@ -82,7 +80,7 @@ int metal_ai_get_threshold(MetalAIContext* ctx);
 
 /**
  * Batch verify ML-DSA signatures using GPU acceleration.
- * Uses NTT acceleration from kinetcpp/lattice for polynomial operations.
+ * Uses NTT acceleration from kinet-labs/lattice for polynomial operations.
  *
  * @param ctx Metal AI context
  * @param sigs Array of signature pointers

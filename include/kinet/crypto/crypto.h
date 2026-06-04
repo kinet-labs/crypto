@@ -14,8 +14,6 @@
 // - CUDA (Linux/NVIDIA via MLX)
 // - Optimized CPU fallback
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #ifndef KINET_CRYPTO_H
 #define KINET_CRYPTO_H
@@ -201,7 +199,7 @@ int crypto_mldsa_verify(const uint8_t* sig, size_t sig_len,
 
 /**
  * Batch verify ML-DSA signatures (GPU-accelerated).
- * Uses NTT acceleration from kinetcpp/lattice.
+ * Uses NTT acceleration from kinet-labs/lattice.
  * @param sigs Array of signatures
  * @param sig_lens Array of signature lengths
  * @param msgs Array of messages

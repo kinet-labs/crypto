@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // First-party Keccak-256 (Ethereum hash) implementation.
 //
 // Reference: Keccak v3.0 specification by Bertoni-Daemen-Peeters-Van Assche.

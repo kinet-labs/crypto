@@ -17,8 +17,6 @@
 //
 // This kernel achieves ~10x speedup for twiddle access by prefetching.
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #include <metal_stdlib>
 using namespace metal;

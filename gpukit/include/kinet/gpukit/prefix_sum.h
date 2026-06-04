@@ -1,4 +1,6 @@
-/*
+/* Copyright (c) 2024-2026 Kinet Industries Inc.
+ * SPDX-License-Identifier: BSD-3-Clause-Eco
+ *
  * Inclusive prefix sum (scan).
  *   out[0] = in[0]
  *   out[i] = out[i-1] + in[i]

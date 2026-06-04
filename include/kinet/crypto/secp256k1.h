@@ -1,10 +1,12 @@
-/*
+/* Copyright (c) 2024-2026 Kinet Industries Inc.
+ * SPDX-License-Identifier: BSD-3-Clause-Eco
+ *
  * secp256k1 — first-party C ABI.
  *
  * No external crypto libraries. No vendored code. No runtime dependencies.
  *
  * Single source of truth used by:
- *   - Go via CGO (kinetfi/crypto/secp256k1)
+ *   - Go via CGO (kinet-labs/crypto/secp256k1)
  *   - Rust via FFI (kinet-crypto-sys)
  *   - C++ (kinet::crypto::secp256k1 namespace)
  *   - GPU drivers (Metal/CUDA/WGSL kernels)

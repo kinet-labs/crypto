@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Metal merkle_compose driver -- v1.1 ships CPU only. Parallel Keccak-256
 // inner hashing is part of the keccak Stage 2 GPU port (sibling agent owns
 // the per-leaf parallel Keccak kernel). When that lands, this driver fans out

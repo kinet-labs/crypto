@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Test Montgomery batch inversion for secp256k1 Fp and Fn.
 //
 // Three sizes (16, 256, 4096):

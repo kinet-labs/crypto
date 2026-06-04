@@ -27,7 +27,7 @@ the primitive, the harness asserts byte-equality vs the CPU reference.
 ## Build
 
 ```sh
-cd /Users/z/work/kinetcpp/crypto
+cd /Users/z/work/kinet-labs/crypto
 cmake -S . -B build-gpukit -DCMAKE_BUILD_TYPE=Release \
   -DKINET_CRYPTO_ENABLE_METAL=ON -DKINET_CRYPTO_ENABLE_WGSL=ON
 cmake --build build-gpukit --target gpukit-tests

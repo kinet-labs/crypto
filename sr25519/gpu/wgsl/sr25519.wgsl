@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // sr25519 (Schnorrkel/Ristretto255) batch verification in WGSL.
 // Schnorr signatures on the Ristretto255 group.
 // Same field as Ed25519 (p = 2^255 - 19) with cofactor elimination.

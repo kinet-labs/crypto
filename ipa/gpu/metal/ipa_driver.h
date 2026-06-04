@@ -5,8 +5,6 @@
 // C++ interface for Verkle tree operations using Inner Product Arguments (IPA).
 // GPU-accelerated Banderwagon curve operations and multi-scalar multiplication.
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #ifndef KINET_METAL_IPA_H
 #define KINET_METAL_IPA_H

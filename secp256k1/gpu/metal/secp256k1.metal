@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // First-party Metal kernel for batch secp256k1 ecrecover.
 //
 // This kernel mirrors src/secp256k1/{field.hpp,curve.hpp,ecrecover.cpp}

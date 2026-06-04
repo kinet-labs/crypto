@@ -1,5 +1,5 @@
 // =============================================================================
-// kinetcpp/crypto - top-level dispatcher
+// kinet-labs/crypto - top-level dispatcher
 // =============================================================================
 // Implements the GPU control plane and version reporting from kinet_crypto.h.
 // Per-algorithm symbols (keccak256, sha256, ...) are exported by their

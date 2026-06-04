@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Metal radix_sort driver -- v1.1 returns NOTIMPL.
 //
 // The Metal kernels (radix_count_u32 / radix_scatter_u32 / *_u64) ship in

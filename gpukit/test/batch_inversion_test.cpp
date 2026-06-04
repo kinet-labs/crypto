@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Batch inversion harness. CPU correctness check verifies
 // a[i] * inv[i] == 1 mod p for each field. GPU backends are exercised through
 // the byte-equal contract; v1.1 returns NOTIMPL and the harness reports the gap.

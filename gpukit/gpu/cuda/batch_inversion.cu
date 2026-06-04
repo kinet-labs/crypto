@@ -1,3 +1,5 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
 // v1.1: NOTIMPL on all hosts. Real CUDA implementation lands with BLS Stage 3+.
 
 #include "kinet/gpukit/batch_inversion.h"

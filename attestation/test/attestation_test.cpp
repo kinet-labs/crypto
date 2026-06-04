@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Tests for the SEV-SNP, TDX, and NRAS evidence parsers.
 //
 // Fixtures are synthesized in-test so they are deterministic, version-pinned,

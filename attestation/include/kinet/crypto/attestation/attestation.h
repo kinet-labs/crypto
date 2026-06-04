@@ -1,5 +1,7 @@
-/*
- * Confidential-compute attestation primitives for kinetcpp/crypto.
+/* Copyright (c) 2024-2026 Kinet Industries Inc.
+ * SPDX-License-Identifier: BSD-3-Clause-Eco
+ *
+ * Confidential-compute attestation primitives for kinet-labs/crypto.
  *
  *   * AMD SEV-SNP attestation report parser  -- 32-byte measurement extract
  *   * Intel TDX TD Quote parser              -- 32-byte MRTD extract

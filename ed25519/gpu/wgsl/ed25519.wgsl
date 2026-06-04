@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Ed25519 EdDSA batch verification in WGSL.
 // Twisted Edwards curve: -x^2 + y^2 = 1 + d*x^2*y^2 over F_p, p = 2^255 - 19.
 // Each thread verifies one signature.

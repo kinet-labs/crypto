@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 /// @file mldsa.metal
 /// Metal compute shader for batch ML-DSA-65 (FIPS 204, CRYSTALS-Dilithium)
 /// signature verification.

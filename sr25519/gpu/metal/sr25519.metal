@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 /// @file sr25519.metal
 /// Metal compute shader for batch sr25519 (Schnorrkel/Ristretto255) verification.
 ///

@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Four-Step NTT in WGSL, ported from four_step_ntt.metal.
 // Column NTTs, twiddle+transpose, row NTTs, scaling.
 // u64 emulated as vec2<u32>(lo, hi).

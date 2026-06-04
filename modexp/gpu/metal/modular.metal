@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Partners Limited
+// SPDX-License-Identifier: BSD-3-Clause
+//
 // Modular Arithmetic - High-Performance Metal Implementation
 // Montgomery and Barrett reduction for finite field operations.
 

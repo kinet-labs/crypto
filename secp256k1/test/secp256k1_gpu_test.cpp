@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // CPU vs GPU byte-equality test for secp256k1.
 //
 // The Metal kernel currently emits a 20-byte Ethereum address per signature

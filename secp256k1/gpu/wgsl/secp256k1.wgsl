@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // secp256k1 ECDSA public key recovery (ecrecover) in WGSL.
 // Matches secp256k1_recover.metal output byte-for-byte.
 // 256-bit arithmetic uses 8 x u32 limbs (no native u64 in WGSL).

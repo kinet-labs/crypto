@@ -3,7 +3,7 @@
 // =============================================================================
 //
 // GPU-accelerated ML-DSA (FIPS 204) signature verification on Apple Silicon.
-// Uses NTT from kinetcpp/lattice for polynomial operations.
+// Uses NTT from kinet-labs/lattice for polynomial operations.
 //
 // ML-DSA Parameters (65 = NIST Level 3):
 //   n = 256 (polynomial degree)
@@ -15,8 +15,6 @@
 //   Public key: 1952 bytes
 //   Signature: 3309 bytes
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #include <metal_stdlib>
 using namespace metal;

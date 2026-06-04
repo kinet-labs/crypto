@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Ringtail lattice-based threshold signatures in WGSL.
 // Polynomial ring Z_q[x]/(x^n + 1), q=8380417, n=256.
 // NTT-based polynomial multiplication.

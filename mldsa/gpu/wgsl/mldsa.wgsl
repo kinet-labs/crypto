@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // ML-DSA-65 (FIPS 204) batch signature verification in WGSL.
 // NTT-based polynomial arithmetic over Z_q[x]/(x^n + 1), q=8380417, n=256.
 // Each thread verifies one signature.

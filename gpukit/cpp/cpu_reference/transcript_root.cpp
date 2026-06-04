@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Fiat-Shamir transcript root -- CPU reference.
 //
 // Uses Keccak-256 over the concatenation of:

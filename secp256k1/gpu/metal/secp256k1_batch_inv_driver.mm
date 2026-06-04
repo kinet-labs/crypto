@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Metal driver for Stage A (Montgomery batch inversion) of the v0.63 ecrecover
 // pipeline. macOS / iOS only.
 //

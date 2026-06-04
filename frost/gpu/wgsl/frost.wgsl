@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // FROST threshold Schnorr signature verification in WGSL.
 // Uses secp256k1 curve. Each thread verifies one partial signature.
 //

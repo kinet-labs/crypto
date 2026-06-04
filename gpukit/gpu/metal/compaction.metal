@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Stream compaction. Two-stage:
 //   1. compaction_mark: convert flags[i]!=0 to 0/1, store in scan_in.
 //   2. host runs prefix_sum on scan_in to produce scan_out (exclusive scan

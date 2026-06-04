@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Number-theoretic transform (NTT) -- CPU reference, parametric over modulus.
 //
 // Two prime moduli ship: Kyber (q=3329) and Dilithium (q=8380417). Both use

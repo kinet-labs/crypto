@@ -1,4 +1,6 @@
-/*
+/* Copyright (c) 2024-2026 Kinet Industries Inc.
+ * SPDX-License-Identifier: BSD-3-Clause-Eco
+ *
  * Montgomery batch inversion.
  *
  * Computes inv[i] = a[i]^-1 mod p in O(n) field multiplications + 1 inversion.

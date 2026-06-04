@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Tests for the Keccak service (KeccakJobKind dedup + round cache).
 //
 // 1. 100 random jobs of mixed kinds -> outputs byte-equal to keccak256()

@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 /// @file secp256k1_recover.metal
 /// Metal compute shader for batch secp256k1 ECDSA public key recovery.
 ///

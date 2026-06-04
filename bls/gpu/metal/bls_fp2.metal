@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Fp2 = Fp[u]/(u^2 + 1) for BLS12-381.
 // Layout: struct Fp2 { Fp c0, c1; }  ==  blst_fp2 { blst_fp fp[2]; } byte-for-byte.
 // Element a + b*u stored as { c0=a, c1=b } in Montgomery form.

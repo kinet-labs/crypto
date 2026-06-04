@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Build-time oracle: generates Fp/Fp2/Fp6/Fp12 test vectors using blst as the
 // reference implementation, then writes a C header the Metal-side test suite
 // can link against.

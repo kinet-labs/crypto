@@ -1,3 +1,5 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
 // v1.1: NOTIMPL. Forward / negacyclic-mul kernels for Kyber and Dilithium are
 // scheduled for v1.2.
 

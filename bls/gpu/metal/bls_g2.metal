@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // G2 = E'(Fp2) for BLS12-381  (twist curve  y^2 = x^3 + 4(u+1)).
 // Layouts:
 //   struct P2     { Fp2 X, Y, Z; }   ==  blst_p2 / POINTonE2          (288 B)

@@ -1,11 +1,11 @@
 // =============================================================================
-// kinetcpp/crypto - canonical public C ABI
+// kinet-labs/crypto - canonical public C ABI
 // =============================================================================
 //
-// This is the single public C entry point for all algorithms in kinetcpp/crypto.
+// This is the single public C entry point for all algorithms in kinet-labs/crypto.
 // Consumed by:
-//   - kinetfi/crypto (Go cgo)
-//   - kinetfi/kinet  (Go cgo)
+//   - kinet-labs/crypto (Go cgo)
+//   - kinet-labs/kinet  (Go cgo)
 //   - hanzoai/node (Go cgo)
 //   - zooai/node   (Go cgo)
 //   - any Rust caller (via bindgen)

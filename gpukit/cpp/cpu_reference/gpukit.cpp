@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Top-level dispatcher: backend resolution + version.
 
 #include "kinet/gpukit/gpukit.h"

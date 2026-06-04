@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.20)
 project(kinet_crypto VERSION 1.0.0 LANGUAGES C CXX)
 
 # =============================================================================
-# kinetcpp/crypto - canonical GPU-accelerated cryptographic primitives
+# kinet-labs/crypto - canonical GPU-accelerated cryptographic primitives
 # =============================================================================
 #
 # Layout (one directory per algorithm):
@@ -261,7 +261,7 @@ if(KINET_CRYPTO_BUILD_TESTS)
 endif()
 
 message(STATUS "=================================================")
-message(STATUS "kinetcpp/crypto v${PROJECT_VERSION}")
+message(STATUS "kinet-labs/crypto v${PROJECT_VERSION}")
 message(STATUS "  Algorithms:  ${KINET_CRYPTO_ALGS}")
 message(STATUS "  CUDA:        ${KINET_CRYPTO_ENABLE_CUDA}")
 message(STATUS "  Metal:       ${KINET_CRYPTO_ENABLE_METAL}")
