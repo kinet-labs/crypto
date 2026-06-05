@@ -1,7 +1,7 @@
 // Copyright (c) 2024-2026 Kinet Industries Inc.
 // SPDX-License-Identifier: BSD-3-Clause-Eco
 //
-// Test vectors for keccak256 (Ethereum-style Keccak-256 with delimiter 0x01).
+// Test vectors for kinet_keccak256 (Ethereum-style Keccak-256 with delimiter 0x01).
 // Vectors taken from the original Keccak team's reference (publicly published).
 
 #include "kinet/crypto/keccak.h"
@@ -21,7 +21,7 @@ static std::string hex(const uint8_t* b, size_t n) {
 
 static void check(const char* name, const uint8_t* in, size_t n, const char* expect_hex) {
     uint8_t got[32];
-    keccak256(in, n, got);
+    kinet_keccak256(in, n, got);
     std::string g = hex(got, 32);
     if (g == expect_hex) {
         std::fprintf(stdout, "PASS %s\n", name);
@@ -32,7 +32,7 @@ static void check(const char* name, const uint8_t* in, size_t n, const char* exp
 }
 
 int main() {
-    std::fprintf(stdout, "=== keccak256 test suite ===\n");
+    std::fprintf(stdout, "=== kinet_keccak256 test suite ===\n");
 
     // Empty string
     check("keccak256(\"\")", nullptr, 0,

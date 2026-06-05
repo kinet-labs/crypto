@@ -61,7 +61,6 @@ endif()
 include_directories(BEFORE
     ${CMAKE_CURRENT_SOURCE_DIR}/c-abi
     ${CMAKE_CURRENT_SOURCE_DIR}/include
-    ${CMAKE_CURRENT_SOURCE_DIR}/attestation/include
 )
 
 # 29 canonical algorithms (alphabetical).
@@ -104,11 +103,6 @@ endforeach()
 # gpukit -- common GPU kernel-pattern library (prefix_sum, compaction,
 # radix_sort, batch_inversion, merkle_compose, transcript_root, ntt). Lives
 # alongside the algorithms because it is a building-block layer they consume.
-# Enable testing here so gpukit's add_test calls register with CTest (gpukit
-# is add_subdirectory()-ed before the test block at the bottom).
-if(KINET_CRYPTO_BUILD_TESTS)
-    enable_testing()
-endif()
 option(KINET_GPUKIT_ENABLE_CUDA "Build gpukit CUDA driver" OFF)
 option(KINET_GPUKIT_ENABLE_WGSL "Build gpukit WGSL driver" ${KINET_CRYPTO_ENABLE_WGSL})
 add_subdirectory(gpukit)
@@ -152,14 +146,14 @@ if(KINET_CRYPTO_BUILD_TESTS)
     add_test(NAME keccak_service_test COMMAND keccak_service_test)
 
     add_executable(secp256k1_test secp256k1/test/secp256k1_test.cpp)
-    target_link_libraries(secp256k1_test PRIVATE secp256k1_cpu keccak_cpu)
+    target_link_libraries(secp256k1_test PRIVATE secp256k1_cpu)
     target_include_directories(secp256k1_test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/secp256k1/cpp
     )
     add_test(NAME secp256k1_test COMMAND secp256k1_test)
 
     add_executable(secp256k1_batch_inv_test secp256k1/test/secp256k1_batch_inv_test.cpp)
-    target_link_libraries(secp256k1_batch_inv_test PRIVATE secp256k1_cpu keccak_cpu)
+    target_link_libraries(secp256k1_batch_inv_test PRIVATE secp256k1_cpu)
     target_include_directories(secp256k1_batch_inv_test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/secp256k1/cpp
     )
@@ -216,46 +210,6 @@ if(KINET_CRYPTO_BUILD_TESTS)
             add_test(NAME secp256k1_gpu_test COMMAND secp256k1_gpu_test)
             set_property(TEST secp256k1_gpu_test PROPERTY
                 ENVIRONMENT "KINET_CRYPTO_SECP256K1_METALLIB=${_secp_lib}")
-
-            # v0.63 Stage A: batch inversion metallib + CPU↔Metal byte-equality test.
-            set(_binv_metal ${CMAKE_CURRENT_SOURCE_DIR}/secp256k1/gpu/metal/secp256k1_batch_inv.metal)
-            set(_binv_air   ${CMAKE_CURRENT_BINARY_DIR}/secp256k1_batch_inv.air)
-            set(_binv_lib   ${CMAKE_CURRENT_BINARY_DIR}/kinet_crypto_secp256k1_batch_inv.metallib)
-            add_custom_command(
-                OUTPUT ${_binv_air}
-                COMMAND ${XCRUN} -sdk macosx metal -c ${_binv_metal} -o ${_binv_air}
-                DEPENDS ${_binv_metal})
-            add_custom_command(
-                OUTPUT ${_binv_lib}
-                COMMAND ${XCRUN} -sdk macosx metallib ${_binv_air} -o ${_binv_lib}
-                DEPENDS ${_binv_air})
-            add_custom_target(secp256k1_batch_inv_metallib ALL DEPENDS ${_binv_lib})
-
-            add_executable(secp256k1_batch_inv_gpu_test
-                secp256k1/test/secp256k1_batch_inv_gpu_test.cpp)
-            target_link_libraries(secp256k1_batch_inv_gpu_test PRIVATE
-                secp256k1_cpu secp256k1_batch_inv_metal)
-            target_include_directories(secp256k1_batch_inv_gpu_test PRIVATE
-                ${CMAKE_CURRENT_SOURCE_DIR}/secp256k1/cpp
-            )
-            add_dependencies(secp256k1_batch_inv_gpu_test secp256k1_batch_inv_metallib)
-            add_test(NAME secp256k1_batch_inv_gpu_test COMMAND secp256k1_batch_inv_gpu_test)
-            set_property(TEST secp256k1_batch_inv_gpu_test PROPERTY
-                ENVIRONMENT "KINET_CRYPTO_SECP256K1_BATCH_INV_METALLIB=${_binv_lib}")
-
-            # v0.63 keccak service: keccak_batch.metal + GPU vs CPU equality test.
-            set(_kbatch_metal ${CMAKE_CURRENT_SOURCE_DIR}/keccak/gpu/metal/keccak_batch.metal)
-            set(_kbatch_air   ${CMAKE_CURRENT_BINARY_DIR}/keccak_batch.air)
-            set(_kbatch_lib   ${CMAKE_CURRENT_BINARY_DIR}/kinet_crypto_keccak_batch.metallib)
-            add_custom_command(
-                OUTPUT ${_kbatch_air}
-                COMMAND ${XCRUN} -sdk macosx metal -c ${_kbatch_metal} -o ${_kbatch_air}
-                DEPENDS ${_kbatch_metal})
-            add_custom_command(
-                OUTPUT ${_kbatch_lib}
-                COMMAND ${XCRUN} -sdk macosx metallib ${_kbatch_air} -o ${_kbatch_lib}
-                DEPENDS ${_kbatch_air})
-            add_custom_target(keccak_batch_metallib ALL DEPENDS ${_kbatch_lib})
         endif()
     endif()
 endif()

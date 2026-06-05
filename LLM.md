@@ -133,46 +133,6 @@ The Go mirror lives at `kinet-labs/kms/pkg/attestation`; cross-language parity i
 proven by `TestCompositeRoot_MatchesCABI` (canonical root pinned to
 `56f1d8e537973913091159c532ecc657f3e0cd63946dfcaea831d42a62682152`).
 
-## v0.63 — 4-kernel pattern applied to crypto
-
-**secp256k1**
-
-- `secp256k1/cpp/batch_inv.hpp` — Montgomery batch inversion for Fp and Fn.
-  One Fermat exponentiation + 3(n-1) field multiplications across the batch
-  instead of n separate Fermat inversions.
-- `secp256k1/cpp/windowed_g_table.hpp` — fixed w=4 windowed G table built once
-  at library init. 64 windows × 16 entries = 1024 affine points (~64 KB).
-- `secp256k1/cpp/ecrecover_pipeline.hpp` — 7-stage CPU pipeline:
-  parse_reject → field_normalize → recover_R → batch_invert(r) →
-  scalar_mult(u1·G + u2·R) → batch_invert(Z) → compose_output.
-- `secp256k1/gpu/metal/secp256k1_batch_inv.metal` + `_driver.mm` — Metal
-  Stage A kernel; CPU↔Metal byte-equal at n ∈ {16, 256, 4096} for both Fp/Fn.
-- C ABI: `secp256k1_ecrecover_batch_pipeline()`,
-  `secp256k1_ecrecover_address_batch()`.
-- Measured speedup at n=1024 CPU: simple loop ~425 ms → pipeline ~232 ms
-  (1.80× wall-clock, dominated by the single-Fermat batch inversion).
-
-**keccak**
-
-- `keccak/cpp/keccak_service.hpp` — KeccakJobKind enum (9 kinds) +
-  KeccakJob descriptor + per-round dedup cache + in-batch dedup.
-- `keccak/gpu/metal/keccak_batch.metal` — one-thread-per-job Keccak-256;
-  byte-equal to CPU.
-- Mapping-slot dedup hit-rate ≥ 0.50 on synthetic round workload (test shows
-  0.67 on 50-unique × 3-call workload).
-
-**Tests added**: `secp256k1_batch_inv_test`, `secp256k1_ecrecover_pipeline_test`,
-`secp256k1_batch_inv_gpu_test`, `keccak_service_test`. All pass; combined with
-existing `secp256k1_test`, `secp256k1_gpu_test`, `keccak_test` = 7/7.
-
-**Gaps for v0.64**:
-- Glv endomorphism for u2·R scalar mult (gated behind a feature flag; must
-  preserve byte-equality across CPU/Metal/CUDA/WGSL before enabling).
-- Per-stage Metal kernels for the 7 pipeline stages (today's Metal path uses
-  the existing single-kernel `secp256k1.metal`; the algorithmic win lives in
-  Stage A which already has its own kernel).
-- CUDA + WGSL ports of `secp256k1_batch_inv` (Metal only in v0.63).
-
 ## Phase plan
 
 - Phase 1 (this commit): canonical layout + 28 algorithm directories + unified
