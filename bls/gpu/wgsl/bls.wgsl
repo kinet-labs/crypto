@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // BLS12-381 G1 point operations in WGSL.
 // 384-bit field arithmetic (Fp) in Montgomery form for batch BLS verification.
 // Uses 12 x u32 limbs (WGSL has no u64).

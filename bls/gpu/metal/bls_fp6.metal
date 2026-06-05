@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Fp6 = Fp2[v] / (v^3 - (u + 1)) for BLS12-381.
 // Layout: struct Fp6 { Fp2 c0, c1, c2; }  ==  blst_fp6 { blst_fp2 fp2[3]; } byte-equal.
 // Element  c0 + c1 v + c2 v^2  with v^3 = u + 1.
@@ -169,7 +172,7 @@ constant uint384 FP6_FROB_C1_IM_N2 = {{0,0,0,0,0,0}};
 constant uint384 FP6_FROB_C1_RE_N3 = {{0,0,0,0,0,0}};
 // blst comment: "implied ONE_MONT_P at index 0"  =>  imag part = R mod p (= 1 in Mont)
 constant uint384 FP6_FROB_C1_IM_N3 = {{
-    0x760900000002FFFDUL, 0xEBF4000BC40C0002UL, 0x5F48985753C758BAUL,
+    0x760900000002FFCDUL, 0xEBF4000BC40C0002UL, 0x5F48985753C758BAUL,
     0x77CE585370525745UL, 0x5C071A97A256EC6DUL, 0x15F65EC3FA80E493UL
 }};
 

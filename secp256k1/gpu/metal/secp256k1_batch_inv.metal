@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Montgomery batch inversion for secp256k1 base field (Fp) and scalar field
 // (Fn). Mirrors crypto/secp256k1/cpp/batch_inv.hpp; output must be byte-equal.
 //

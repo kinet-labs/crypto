@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Shared Fp arithmetic primitives for BLS12-381 tower extensions.
 // Included by bls_fp2.metal, bls_fp6.metal, bls_fp12.metal.
 //
@@ -27,7 +30,7 @@ constant uint384 BLS_R2 = {{
 }};
 
 constant uint384 BLS_R = {{
-    0x760900000002FFFDUL, 0xEBF4000BC40C0002UL, 0x5F48985753C758BAUL,
+    0x760900000002FFCDUL, 0xEBF4000BC40C0002UL, 0x5F48985753C758BAUL,
     0x77CE585370525745UL, 0x5C071A97A256EC6DUL, 0x15F65EC3FA80E493UL
 }};
 

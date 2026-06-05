@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // FROST Nonce Generation and Commitment Operations
 // Batch nonce generation, hash-to-curve, and binding factor computation
 // Optimized for Apple Silicon GPUs

@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // 7-stage ecrecover pipeline (see crypto/secp256k1/gpu/metal/ecrecover_pipeline.metal
 // for the matching GPU kernels). The CPU path here is the canonical reference
 // the GPU must match byte-for-byte.

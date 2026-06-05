@@ -21,6 +21,9 @@
 // Determinism: every CPU and GPU code path returns byte-identical output for
 // any given input across all backends. This is a tested invariant (see
 // <alg>/test/<alg>_determinism_test.cpp for each algorithm).
+//
+// Copyright (C) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
 // =============================================================================
 
 #ifndef KINET_CRYPTO_H

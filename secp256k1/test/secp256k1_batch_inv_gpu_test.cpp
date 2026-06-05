@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // CPU vs Metal byte-equality test for Stage A (Montgomery batch inversion).
 //
 // Three sizes (16, 256, 4096) for each of Fp and Fn. Output buffers compared

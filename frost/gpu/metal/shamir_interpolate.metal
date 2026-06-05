@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Shamir Secret Sharing Lagrange Interpolation
 // GPU-accelerated field interpolation for t-of-n threshold schemes
 // Optimized for Apple Silicon GPUs

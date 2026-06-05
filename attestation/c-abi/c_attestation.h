@@ -1,4 +1,6 @@
-/*
+/* Copyright (c) 2024-2026 Kinet Industries Inc.
+ * SPDX-License-Identifier: BSD-3-Clause-Eco
+ *
  * Brand-neutral C ABI for the attestation algorithm. Mirrors the public
  * <kinet/crypto/attestation/...> surface so cgo / bindgen consumers see one
  * canonical entry list.

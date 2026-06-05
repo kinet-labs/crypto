@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // First-party Jacobian-coordinate elliptic curve arithmetic for secp256k1.
 //
 // All field elements stored in Montgomery form throughout. Affine point

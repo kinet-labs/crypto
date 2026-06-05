@@ -104,11 +104,6 @@ endforeach()
 # gpukit -- common GPU kernel-pattern library (prefix_sum, compaction,
 # radix_sort, batch_inversion, merkle_compose, transcript_root, ntt). Lives
 # alongside the algorithms because it is a building-block layer they consume.
-# Enable testing here so gpukit's add_test calls register with CTest (gpukit
-# is add_subdirectory()-ed before the test block at the bottom).
-if(KINET_CRYPTO_BUILD_TESTS)
-    enable_testing()
-endif()
 option(KINET_GPUKIT_ENABLE_CUDA "Build gpukit CUDA driver" OFF)
 option(KINET_GPUKIT_ENABLE_WGSL "Build gpukit WGSL driver" ${KINET_CRYPTO_ENABLE_WGSL})
 add_subdirectory(gpukit)

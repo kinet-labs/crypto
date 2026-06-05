@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // First-party secp256k1 ECDSA public-key recovery.
 //
 // Public C ABI: kinet/crypto/secp256k1.h

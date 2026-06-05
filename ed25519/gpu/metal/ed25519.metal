@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 /// @file ed25519.metal
 /// Metal compute shader for batch Ed25519 EdDSA signature verification.
 ///

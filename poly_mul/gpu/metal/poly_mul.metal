@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc. All Rights Reserved.
+// SPDX-License-Identifier: BSD-3-Clause
+//
 // Polynomial Multiplication - High-Performance Metal Implementation
 // Supports schoolbook and NTT-based multiplication for lattice cryptography.
 

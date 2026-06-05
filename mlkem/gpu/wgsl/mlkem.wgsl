@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // ML-KEM-768 (FIPS 203) batch decapsulation in WGSL.
 // NTT-based polynomial arithmetic over Z_q[x]/(x^n+1), q=3329, n=256.
 // Each thread decapsulates one ciphertext.

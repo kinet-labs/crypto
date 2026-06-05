@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // Intel TDX TD Quote parser.
 //
 // The TD Quote layout per Intel TDX DCAP "Quote Generation Service"

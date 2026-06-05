@@ -1,3 +1,6 @@
+// Copyright (c) 2024-2026 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 /// @file blake3.metal
 /// Metal compute shader for parallel BLAKE3 hashing.
 ///
