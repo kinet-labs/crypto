@@ -34,18 +34,18 @@ extern "C" {
  * Check if GPU acceleration is available.
  * @return true if GPU (Metal/CUDA) is available
  */
-bool crypto_gpu_available(void);
+bool kinet_crypto_gpu_available(void);
 
 /**
  * Get the name of the active backend.
  * @return "Metal", "CUDA", or "CPU"
  */
-const char* crypto_get_backend(void);
+const char* kinet_crypto_get_backend(void);
 
 /**
  * Clear internal caches.
  */
-void crypto_clear_cache(void);
+void kinet_crypto_clear_cache(void);
 
 // =============================================================================
 // BLS12-381 Signatures
@@ -63,7 +63,7 @@ void crypto_clear_cache(void);
  * @param seed Random seed (NULL for system entropy)
  * @return 0 on success
  */
-int crypto_bls_keygen(uint8_t* sk, const uint8_t* seed);
+int kinet_crypto_bls_keygen(uint8_t* sk, const uint8_t* seed);
 
 /**
  * Derive BLS public key from secret key.
@@ -71,7 +71,7 @@ int crypto_bls_keygen(uint8_t* sk, const uint8_t* seed);
  * @param sk Secret key (32 bytes)
  * @return 0 on success
  */
-int crypto_bls_sk_to_pk(uint8_t* pk, const uint8_t* sk);
+int kinet_crypto_bls_sk_to_pk(uint8_t* pk, const uint8_t* sk);
 
 /**
  * Sign a message with BLS.
@@ -80,7 +80,7 @@ int crypto_bls_sk_to_pk(uint8_t* pk, const uint8_t* sk);
  * @param msg Message hash (32 bytes)
  * @return 0 on success
  */
-int crypto_bls_sign(uint8_t* sig, const uint8_t* sk, const uint8_t* msg);
+int kinet_crypto_bls_sign(uint8_t* sig, const uint8_t* sk, const uint8_t* msg);
 
 /**
  * Verify a BLS signature.
@@ -89,7 +89,7 @@ int crypto_bls_sign(uint8_t* sig, const uint8_t* sk, const uint8_t* msg);
  * @param msg Message hash (32 bytes)
  * @return 1 if valid, 0 if invalid
  */
-int crypto_bls_verify(const uint8_t* sig, const uint8_t* pk, const uint8_t* msg);
+int kinet_crypto_bls_verify(const uint8_t* sig, const uint8_t* pk, const uint8_t* msg);
 
 /**
  * Aggregate multiple BLS signatures.
@@ -98,7 +98,7 @@ int crypto_bls_verify(const uint8_t* sig, const uint8_t* pk, const uint8_t* msg)
  * @param count Number of signatures
  * @return 0 on success
  */
-int crypto_bls_aggregate_signatures(uint8_t* agg_sig,
+int kinet_crypto_bls_aggregate_signatures(uint8_t* agg_sig,
                                         const uint8_t* const* sigs,
                                         uint32_t count);
 
@@ -109,7 +109,7 @@ int crypto_bls_aggregate_signatures(uint8_t* agg_sig,
  * @param count Number of public keys
  * @return 0 on success
  */
-int crypto_bls_aggregate_public_keys(uint8_t* agg_pk,
+int kinet_crypto_bls_aggregate_public_keys(uint8_t* agg_pk,
                                          const uint8_t* const* pks,
                                          uint32_t count);
 
@@ -120,7 +120,7 @@ int crypto_bls_aggregate_public_keys(uint8_t* agg_pk,
  * @param msg Message hash (32 bytes)
  * @return 1 if valid, 0 if invalid
  */
-int crypto_bls_verify_aggregated(const uint8_t* agg_sig,
+int kinet_crypto_bls_verify_aggregated(const uint8_t* agg_sig,
                                      const uint8_t* agg_pk,
                                      const uint8_t* msg);
 
@@ -133,7 +133,7 @@ int crypto_bls_verify_aggregated(const uint8_t* agg_sig,
  * @param results Output array of verification results (1=valid, 0=invalid)
  * @return 0 on success, negative on error
  */
-int crypto_bls_batch_verify(const uint8_t* const* sigs,
+int kinet_crypto_bls_batch_verify(const uint8_t* const* sigs,
                                 const uint8_t* const* pks,
                                 const uint8_t* const* msgs,
                                 uint32_t count,
@@ -148,7 +148,7 @@ int crypto_bls_batch_verify(const uint8_t* const* sigs,
  * @param count Number of signatures to produce
  * @return 0 on success, negative on error
  */
-int crypto_bls_batch_sign(uint8_t** sigs,
+int kinet_crypto_bls_batch_sign(uint8_t** sigs,
                               const uint8_t* const* sks,
                               const uint8_t* const* msgs,
                               uint32_t count);
@@ -169,7 +169,7 @@ int crypto_bls_batch_sign(uint8_t** sigs,
  * @param seed Random seed (NULL for system entropy)
  * @return 0 on success
  */
-int crypto_mldsa_keygen(uint8_t* pk, uint8_t* sk, const uint8_t* seed);
+int kinet_crypto_mldsa_keygen(uint8_t* pk, uint8_t* sk, const uint8_t* seed);
 
 /**
  * Sign a message with ML-DSA.
@@ -180,7 +180,7 @@ int crypto_mldsa_keygen(uint8_t* pk, uint8_t* sk, const uint8_t* seed);
  * @param sk Secret key
  * @return 0 on success
  */
-int crypto_mldsa_sign(uint8_t* sig, size_t* sig_len,
+int kinet_crypto_mldsa_sign(uint8_t* sig, size_t* sig_len,
                           const uint8_t* msg, size_t msg_len,
                           const uint8_t* sk);
 
@@ -193,7 +193,7 @@ int crypto_mldsa_sign(uint8_t* sig, size_t* sig_len,
  * @param pk Public key
  * @return 1 if valid, 0 if invalid
  */
-int crypto_mldsa_verify(const uint8_t* sig, size_t sig_len,
+int kinet_crypto_mldsa_verify(const uint8_t* sig, size_t sig_len,
                             const uint8_t* msg, size_t msg_len,
                             const uint8_t* pk);
 
@@ -209,7 +209,7 @@ int crypto_mldsa_verify(const uint8_t* sig, size_t sig_len,
  * @param results Output verification results
  * @return 0 on success
  */
-int crypto_mldsa_batch_verify(const uint8_t* const* sigs,
+int kinet_crypto_mldsa_batch_verify(const uint8_t* const* sigs,
                                   const size_t* sig_lens,
                                   const uint8_t* const* msgs,
                                   const size_t* msg_lens,
@@ -224,7 +224,7 @@ int crypto_mldsa_batch_verify(const uint8_t* const* sigs,
 /**
  * Opaque threshold context.
  */
-typedef struct CryptoThresholdContext CryptoThresholdContext;
+typedef struct KinetCryptoThresholdContext KinetCryptoThresholdContext;
 
 /**
  * Create a threshold context for t-of-n threshold signatures.
@@ -232,12 +232,12 @@ typedef struct CryptoThresholdContext CryptoThresholdContext;
  * @param n Total number of signers
  * @return Context handle, or NULL on error
  */
-CryptoThresholdContext* crypto_threshold_create(uint32_t t, uint32_t n);
+KinetCryptoThresholdContext* kinet_crypto_threshold_create(uint32_t t, uint32_t n);
 
 /**
  * Free threshold context.
  */
-void crypto_threshold_destroy(CryptoThresholdContext* ctx);
+void kinet_crypto_threshold_destroy(KinetCryptoThresholdContext* ctx);
 
 /**
  * Generate threshold key shares using Shamir Secret Sharing.
@@ -248,7 +248,7 @@ void crypto_threshold_destroy(CryptoThresholdContext* ctx);
  * @param seed Random seed (NULL for system entropy)
  * @return 0 on success
  */
-int crypto_threshold_keygen(CryptoThresholdContext* ctx,
+int kinet_crypto_threshold_keygen(KinetCryptoThresholdContext* ctx,
                                 uint8_t** shares,
                                 size_t* share_size,
                                 uint8_t* pk,
@@ -263,7 +263,7 @@ int crypto_threshold_keygen(CryptoThresholdContext* ctx,
  * @param msg Message hash (32 bytes)
  * @return 0 on success
  */
-int crypto_threshold_partial_sign(CryptoThresholdContext* ctx,
+int kinet_crypto_threshold_partial_sign(KinetCryptoThresholdContext* ctx,
                                       uint8_t* partial_sig,
                                       uint32_t share_index,
                                       const uint8_t* share,
@@ -279,7 +279,7 @@ int crypto_threshold_partial_sign(CryptoThresholdContext* ctx,
  * @param count Number of partial signatures (must be >= t)
  * @return 0 on success
  */
-int crypto_threshold_combine(CryptoThresholdContext* ctx,
+int kinet_crypto_threshold_combine(KinetCryptoThresholdContext* ctx,
                                  uint8_t* sig,
                                  const uint8_t* const* partial_sigs,
                                  const uint32_t* indices,
@@ -293,7 +293,7 @@ int crypto_threshold_combine(CryptoThresholdContext* ctx,
  * @param msg Message hash (32 bytes)
  * @return 1 if valid, 0 if invalid
  */
-int crypto_threshold_verify(CryptoThresholdContext* ctx,
+int kinet_crypto_threshold_verify(KinetCryptoThresholdContext* ctx,
                                 const uint8_t* sig,
                                 const uint8_t* pk,
                                 const uint8_t* msg);
@@ -308,7 +308,7 @@ int crypto_threshold_verify(CryptoThresholdContext* ctx,
  * @param in Input data
  * @param len Input length
  */
-void crypto_sha3_256(uint8_t* out, const uint8_t* in, size_t len);
+void kinet_crypto_sha3_256(uint8_t* out, const uint8_t* in, size_t len);
 
 /**
  * SHA3-512 hash.
@@ -316,7 +316,7 @@ void crypto_sha3_256(uint8_t* out, const uint8_t* in, size_t len);
  * @param in Input data
  * @param len Input length
  */
-void crypto_sha3_512(uint8_t* out, const uint8_t* in, size_t len);
+void kinet_crypto_sha3_512(uint8_t* out, const uint8_t* in, size_t len);
 
 /**
  * BLAKE3 hash.
@@ -324,7 +324,7 @@ void crypto_sha3_512(uint8_t* out, const uint8_t* in, size_t len);
  * @param in Input data
  * @param len Input length
  */
-void crypto_blake3(uint8_t* out, const uint8_t* in, size_t len);
+void kinet_crypto_blake3(uint8_t* out, const uint8_t* in, size_t len);
 
 /**
  * Batch hash multiple inputs (GPU-accelerated).
@@ -335,7 +335,7 @@ void crypto_blake3(uint8_t* out, const uint8_t* in, size_t len);
  * @param hash_type 0=SHA3-256, 1=SHA3-512, 2=BLAKE3
  * @return 0 on success
  */
-int crypto_batch_hash(uint8_t** outs,
+int kinet_crypto_batch_hash(uint8_t** outs,
                           const uint8_t* const* ins,
                           const size_t* lens,
                           uint32_t count,
@@ -356,7 +356,7 @@ int crypto_batch_hash(uint8_t** outs,
  * @param block_hash Block hash (32 bytes)
  * @return 1 if all valid, 0 if any invalid
  */
-int crypto_consensus_verify_block(const uint8_t* const* bls_sigs,
+int kinet_crypto_consensus_verify_block(const uint8_t* const* bls_sigs,
                                       const uint8_t* const* bls_pks,
                                       uint32_t bls_count,
                                       const uint8_t* threshold_sig,
@@ -367,14 +367,24 @@ int crypto_consensus_verify_block(const uint8_t* const* bls_sigs,
 // Error Codes
 // =============================================================================
 
-#define CRYPTO_SUCCESS           0
-#define CRYPTO_ERROR_INVALID     -1
-#define CRYPTO_ERROR_INVALID_KEY -2
-#define CRYPTO_ERROR_INVALID_SIG -3
-#define CRYPTO_ERROR_NULL_PTR    -4
-#define CRYPTO_ERROR_GPU         -5
-#define CRYPTO_ERROR_THRESHOLD   -6
-#define CRYPTO_ERROR_HASH        -7
+#define KINET_CRYPTO_SUCCESS           0
+#define KINET_CRYPTO_ERROR_INVALID     -1
+#define KINET_CRYPTO_ERROR_INVALID_KEY -2
+#define KINET_CRYPTO_ERROR_INVALID_SIG -3
+#define KINET_CRYPTO_ERROR_NULL_PTR    -4
+#define KINET_CRYPTO_ERROR_GPU         -5
+#define KINET_CRYPTO_ERROR_THRESHOLD   -6
+#define KINET_CRYPTO_ERROR_HASH        -7
+
+// Backward compatibility aliases (deprecated - use KINET_ prefix)
+#define CRYPTO_SUCCESS           KINET_CRYPTO_SUCCESS
+#define CRYPTO_ERROR_INVALID     KINET_CRYPTO_ERROR_INVALID
+#define CRYPTO_ERROR_INVALID_KEY KINET_CRYPTO_ERROR_INVALID_KEY
+#define CRYPTO_ERROR_INVALID_SIG KINET_CRYPTO_ERROR_INVALID_SIG
+#define CRYPTO_ERROR_NULL_PTR    KINET_CRYPTO_ERROR_NULL_PTR
+#define CRYPTO_ERROR_GPU         KINET_CRYPTO_ERROR_GPU
+#define CRYPTO_ERROR_THRESHOLD   KINET_CRYPTO_ERROR_THRESHOLD
+#define CRYPTO_ERROR_HASH        KINET_CRYPTO_ERROR_HASH
 
 #ifdef __cplusplus
 }

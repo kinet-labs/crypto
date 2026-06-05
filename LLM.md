@@ -34,39 +34,38 @@ kinet-labs/crypto/
     test/vectors/
 ```
 
-## Algorithms (29)
+## Algorithms (28)
 
 | # | Name | CPU body | Metal driver | C-ABI shim |
 |---|------|----------|--------------|------------|
 | 1 | aead | placeholder | -- | stub |
-| 2 | **attestation** | **first-party** (SEV-SNP, TDX, NRAS, composite) | -- | live |
-| 3 | blake2b | full (RFC 7693, on cevm compress) | -- | live |
-| 4 | blake3 | placeholder | live | stub |
-| 5 | bls | placeholder (cevm body needs intx+blst) | live | stub |
-| 6 | bn254 | placeholder (cevm body needs intx) | live | stub |
-| 7 | cggmp21 | placeholder | -- | stub |
-| 8 | ed25519 | placeholder | -- | stub |
-| 9 | evm256 | placeholder | -- | stub |
-| 10 | frost | placeholder | -- | stub |
-| 11 | ipa | placeholder | live | stub |
-| 12 | **keccak** | **first-party** | -- | live (batch) |
-| 13 | kzg | placeholder (cevm body needs blst) | -- | stub |
-| 14 | lamport | placeholder | live | stub |
-| 15 | mldsa | placeholder | live | stub |
-| 16 | mlkem | placeholder | live | stub |
-| 17 | modexp | placeholder (cevm body needs intx) | -- | stub |
-| 18 | ntt | placeholder | -- | stub |
-| 19 | pedersen | placeholder | -- | stub |
-| 20 | poly_mul | placeholder | -- | stub |
-| 21 | poseidon | placeholder | live | stub |
-| 22 | ringtail | placeholder | -- | stub |
-| 23 | ripemd160 | full (cevm body, namespaceable) | -- | live |
-| 24 | **secp256k1** | **first-party (ecrecover)** | live (placeholder) | live (recover wrapper) |
-| 25 | secp256r1 | placeholder (cevm body needs intx) | -- | stub |
-| 26 | sha256 | full (cevm body, namespaceable) | -- | live |
-| 27 | slhdsa | placeholder | live | stub |
-| 28 | sr25519 | placeholder | -- | stub |
-| 29 | verkle | placeholder | -- | stub |
+| 2 | blake2b | full (RFC 7693, on cevm compress) | -- | live |
+| 3 | blake3 | placeholder | live | stub |
+| 4 | bls | placeholder (cevm body needs intx+blst) | live | stub |
+| 5 | bn254 | placeholder (cevm body needs intx) | live | stub |
+| 6 | cggmp21 | placeholder | -- | stub |
+| 7 | ed25519 | placeholder | -- | stub |
+| 8 | evm256 | placeholder | -- | stub |
+| 9 | frost | placeholder | -- | stub |
+| 10 | ipa | placeholder | live | stub |
+| 11 | **keccak** | **first-party** | -- | live (batch) |
+| 12 | kzg | placeholder (cevm body needs blst) | -- | stub |
+| 13 | lamport | placeholder | live | stub |
+| 14 | mldsa | placeholder | live | stub |
+| 15 | mlkem | placeholder | live | stub |
+| 16 | modexp | placeholder (cevm body needs intx) | -- | stub |
+| 17 | ntt | placeholder | -- | stub |
+| 18 | pedersen | placeholder | -- | stub |
+| 19 | poly_mul | placeholder | -- | stub |
+| 20 | poseidon | placeholder | live | stub |
+| 21 | ringtail | placeholder | -- | stub |
+| 22 | ripemd160 | full (cevm body, namespaceable) | -- | live |
+| 23 | **secp256k1** | **first-party (ecrecover)** | live (placeholder) | live (recover wrapper) |
+| 24 | secp256r1 | placeholder (cevm body needs intx) | -- | stub |
+| 25 | sha256 | full (cevm body, namespaceable) | -- | live |
+| 26 | slhdsa | placeholder | live | stub |
+| 27 | sr25519 | placeholder | -- | stub |
+| 28 | verkle | placeholder | -- | stub |
 
 "first-party" = algorithm body authored under kinet-labs/crypto with no third-party
 crypto library. "cevm body" = source file relocated from
@@ -89,89 +88,19 @@ CMake options:
 
 ## Public ABI
 
-`#include <kinet_crypto.h>` -- one header, every symbol. Brand stays in include
-path only; symbols are brand-neutral:
+`#include <kinet_crypto.h>` -- one header, every symbol:
 
-- Hashes: `keccak256`, `sha256`, `blake2b`, `blake3`, `ripemd160`
-- AEAD: `aead_chacha20poly1305_*`
-- EC: `secp256k1_*`, `secp256r1_*`, `ed25519_*`, `sr25519_*`
-- Pairings: `bn254_*`, `bls_*`
-- KZG: `kzg_*`
-- PQ: `mldsa_*`, `mlkem_*`, `slhdsa_*`
-- Threshold: `frost_*`, `cggmp21_*`, `ringtail_*`
-- ZK: `ipa_*`, `lamport_*`, `pedersen_*`, `poseidon_*`, `verkle_*`
-- Bigint: `modexp`, `evm256_*`
-- NTT: `ntt_*`, `poly_mul`
-- Control: `crypto_gpu_{available,set_default,get_default}`, `crypto_version`
-- Status: `CRYPTO_OK`, `CRYPTO_ERR_*`, `CRYPTO_BACKEND_*`
-- Attestation: `attestation_parse_{sev_snp,tdx,nv}`, `attestation_compute_composite_root`, `attestation_verify_baseline`
-
-## Confidential-compute attestation
-
-`<kinet/crypto/attestation/...>` ships software primitives for composite
-node attestation:
-
-- `attestation_parse_sev_snp` — parses 1184-byte AMD SEV-SNP report, extracts
-  the 48-byte MEASUREMENT field, hashes to 32 bytes via keccak256.
-- `attestation_parse_tdx` — parses Intel TDX TD Quote (header + body), extracts
-  the 48-byte MRTD, hashes to 32 bytes.
-- `attestation_parse_nv` — canonical-hashes the NRAS evidence blob.
-- `attestation_compute_composite_root` — keccak256 over the canonical
-  serialization of `NodeConfidentialAttestation` (CPU TEE + GPU TEE +
-  driver/firmware + quasar binary + crypto kernel + AI model runtime +
-  precompile binary + policy root + node identity + epoch + kinds + io_level).
-  Goes into `QuasarRoundDescriptor.attestation_root` (cert ABI).
-- `attestation_verify_baseline` — per-field expectation check against an
-  `AttestationBaseline`. Hash fields zero = wildcard. Kinds NONE = wildcard.
-
-Hardware provisioning (PSP, QGS, NRAS live) is platform-deployment work; the
-parsers ship before live hardware is on hand and are exercised against
-synthesized fixtures. Real-RIM verification (signed manifest + X.509 chain)
-lands when we have a trust anchor on file.
-
-The Go mirror lives at `kinet-labs/kms/pkg/attestation`; cross-language parity is
-proven by `TestCompositeRoot_MatchesCABI` (canonical root pinned to
-`56f1d8e537973913091159c532ecc657f3e0cd63946dfcaea831d42a62682152`).
-
-## v0.63 — 4-kernel pattern applied to crypto
-
-**secp256k1**
-
-- `secp256k1/cpp/batch_inv.hpp` — Montgomery batch inversion for Fp and Fn.
-  One Fermat exponentiation + 3(n-1) field multiplications across the batch
-  instead of n separate Fermat inversions.
-- `secp256k1/cpp/windowed_g_table.hpp` — fixed w=4 windowed G table built once
-  at library init. 64 windows × 16 entries = 1024 affine points (~64 KB).
-- `secp256k1/cpp/ecrecover_pipeline.hpp` — 7-stage CPU pipeline:
-  parse_reject → field_normalize → recover_R → batch_invert(r) →
-  scalar_mult(u1·G + u2·R) → batch_invert(Z) → compose_output.
-- `secp256k1/gpu/metal/secp256k1_batch_inv.metal` + `_driver.mm` — Metal
-  Stage A kernel; CPU↔Metal byte-equal at n ∈ {16, 256, 4096} for both Fp/Fn.
-- C ABI: `secp256k1_ecrecover_batch_pipeline()`,
-  `secp256k1_ecrecover_address_batch()`.
-- Measured speedup at n=1024 CPU: simple loop ~425 ms → pipeline ~232 ms
-  (1.80× wall-clock, dominated by the single-Fermat batch inversion).
-
-**keccak**
-
-- `keccak/cpp/keccak_service.hpp` — KeccakJobKind enum (9 kinds) +
-  KeccakJob descriptor + per-round dedup cache + in-batch dedup.
-- `keccak/gpu/metal/keccak_batch.metal` — one-thread-per-job Keccak-256;
-  byte-equal to CPU.
-- Mapping-slot dedup hit-rate ≥ 0.50 on synthetic round workload (test shows
-  0.67 on 50-unique × 3-call workload).
-
-**Tests added**: `secp256k1_batch_inv_test`, `secp256k1_ecrecover_pipeline_test`,
-`secp256k1_batch_inv_gpu_test`, `keccak_service_test`. All pass; combined with
-existing `secp256k1_test`, `secp256k1_gpu_test`, `keccak_test` = 7/7.
-
-**Gaps for v0.64**:
-- Glv endomorphism for u2·R scalar mult (gated behind a feature flag; must
-  preserve byte-equality across CPU/Metal/CUDA/WGSL before enabling).
-- Per-stage Metal kernels for the 7 pipeline stages (today's Metal path uses
-  the existing single-kernel `secp256k1.metal`; the algorithmic win lives in
-  Stage A which already has its own kernel).
-- CUDA + WGSL ports of `secp256k1_batch_inv` (Metal only in v0.63).
+- Hashes: `kinet_keccak256`, `kinet_sha256`, `kinet_blake2b`, `kinet_blake3`, `kinet_ripemd160`
+- AEAD: `kinet_aead_chacha20poly1305_*`
+- EC: `kinet_secp256k1_*`, `kinet_secp256r1_*`, `kinet_ed25519_*`, `kinet_sr25519_*`
+- Pairings: `kinet_bn254_*`, `kinet_bls_*`
+- KZG: `kinet_kzg_*`
+- PQ: `kinet_mldsa_*`, `kinet_mlkem_*`, `kinet_slhdsa_*`
+- Threshold: `kinet_frost_*`, `kinet_cggmp21_*`, `kinet_ringtail_*`
+- ZK: `kinet_ipa_*`, `kinet_lamport_*`, `kinet_pedersen_*`, `kinet_poseidon_*`, `kinet_verkle_*`
+- Bigint: `kinet_modexp`, `kinet_evm256_*`
+- NTT: `kinet_ntt_*`, `kinet_poly_mul`
+- Control: `kinet_crypto_gpu_{available,set_default,get_default}`, `kinet_crypto_version`
 
 ## Phase plan
 
@@ -190,7 +119,7 @@ existing `secp256k1_test`, `secp256k1_gpu_test`, `keccak_test` = 7/7.
 
 1. No vendoring. No third-party crypto library. Every byte is authored here.
 2. GPU output must be byte-equal to CPU output. Determinism tests prove it.
-3. Stub C-ABI shims return `CRYPTO_ERR_NOTIMPL`. They are not exercised by tests.
+3. Stub C-ABI shims return `KINET_ERR_NOTIMPL`. They are not exercised by tests.
 4. One way to do everything: a caller never has to choose between two
    identical-looking entry points.
 5. Originals at `kinet-labs/cevm/lib/cevm_precompiles/` and `kinet-labs/gpu/kernels/`

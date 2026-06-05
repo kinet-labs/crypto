@@ -7,9 +7,9 @@
 
 #include <cstddef>
 
-extern "C" int sha256(const uint8_t* in, size_t in_len, uint8_t out[32]) {
-    if (out == nullptr) return CRYPTO_ERR_INPUT;
+extern "C" int kinet_sha256(const uint8_t* in, size_t in_len, uint8_t out[32]) {
+    if (out == nullptr) return KINET_ERR_INPUT;
     cevm::crypto::sha256(reinterpret_cast<std::byte*>(out),
                          reinterpret_cast<const std::byte*>(in), in_len);
-    return CRYPTO_OK;
+    return KINET_OK;
 }
