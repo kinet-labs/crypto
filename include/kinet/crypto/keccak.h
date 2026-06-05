@@ -19,7 +19,7 @@ extern "C" {
 #endif
 
 /* Keccak-256: input -> 32-byte digest. */
-void kinet_keccak256(const uint8_t* input, size_t input_len, uint8_t out[32]);
+void keccak256(const uint8_t* input, size_t input_len, uint8_t out[32]);
 
 #ifdef __cplusplus
 }  /* extern "C" */

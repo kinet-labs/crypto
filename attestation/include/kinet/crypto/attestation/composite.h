@@ -1,0 +1,130 @@
+/* Copyright (c) 2024-2026 Kinet Industries Inc.
+ * SPDX-License-Identifier: BSD-3-Clause-Eco
+ *
+ * Composite confidential-compute attestation.
+ *
+ * A single attestation_root binds:
+ *   * CPU TEE measurement       (SEV-SNP report digest, TDX MRTD, etc.)
+ *   * GPU TEE evidence          (NVIDIA NRAS hash, etc.)
+ *   * Driver/firmware           (vbios + driver + RIM digest)
+ *   * Quasar GPU binary         (the consensus binary that must match)
+ *   * Crypto kernel             (the GPU crypto kernels)
+ *   * AI model runtime          (the inference runtime, if any)
+ *   * Precompile binary         (the EVM precompile shared object)
+ *   * Policy root               (network-wide policy commitment)
+ *   * Node identity             (per-node identity hash)
+ *   * Epoch                     (re-attest on each boundary)
+ *   * TEE kinds + IO level
+ *
+ * The attestation_root = keccak(canonical_serialization).
+ *
+ * This is the value that goes into QuasarRoundDescriptor.attestation_root in
+ * the cert ABI. It is also what the KMS gates epoch-key release on.
+ */
+#ifndef KINET_CRYPTO_ATTESTATION_COMPOSITE_H
+#define KINET_CRYPTO_ATTESTATION_COMPOSITE_H
+
+#include <stddef.h>
+#include <stdint.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/* Return codes (matches attestation.h). */
+#ifndef ATTESTATION_OK
+#define ATTESTATION_OK          0
+#define ATTESTATION_ERR_INPUT  -1
+#define ATTESTATION_ERR_LENGTH -2
+#define ATTESTATION_ERR_VERIFY -3
+#define ATTESTATION_ERR_NOTIMPL -5
+#endif
+
+/* Confidential I/O capability declared by the node. Higher levels mean more
+ * of the data path is under TEE protection. */
+#define ATTESTATION_IO_NONE                          0
+#define ATTESTATION_IO_CPU_TEE_ONLY                  1
+#define ATTESTATION_IO_CPU_GPU_COMPOSITE             2
+#define ATTESTATION_IO_GPU_TEE_PROTECTED_TRANSFER    3
+#define ATTESTATION_IO_FULL_DEVICE_IO_ATTESTED       4
+
+/* CPU TEE family. None = software-only attestation (test mode). */
+#define ATTESTATION_CPU_TEE_NONE     0
+#define ATTESTATION_CPU_TEE_SEV_SNP  1
+#define ATTESTATION_CPU_TEE_TDX      2
+#define ATTESTATION_CPU_TEE_SGX      3
+
+/* GPU TEE family. None = no GPU TEE (test mode or non-confidential GPU). */
+#define ATTESTATION_GPU_TEE_NONE                  0
+#define ATTESTATION_GPU_TEE_NV_H100_CC            1
+#define ATTESTATION_GPU_TEE_NV_BLACKWELL_TEE_IO   2
+#define ATTESTATION_GPU_TEE_AMD_MI300_CC          3
+
+/* C-ABI mirror of NodeConfidentialAttestation.
+ *
+ * Field order matters: this is the canonical serialization order used to
+ * compute the composite root.
+ *
+ * Hash fields are 32 bytes each (keccak256 outputs). Pad with zeros if not
+ * applicable on the deployment (e.g. ai_model_runtime_hash on a non-AI node).
+ */
+typedef struct {
+    uint8_t  cpu_tee_measurement[32];
+    uint8_t  gpu_attestation_report[32];
+    uint8_t  driver_firmware_measurement[32];
+    uint8_t  quasar_gpu_binary_hash[32];
+    uint8_t  crypto_kernel_hash[32];
+    uint8_t  ai_model_runtime_hash[32];
+    uint8_t  precompile_binary_hash[32];
+    uint8_t  policy_root[32];
+    uint8_t  node_identity[32];
+    uint64_t epoch;
+    uint8_t  cpu_tee_kind;
+    uint8_t  gpu_tee_kind;
+    uint8_t  io_level;
+    uint8_t  _reserved[5];   /* pads to 8-byte alignment, must be zero */
+} NodeConfidentialAttestation;
+
+/* Compute the composite attestation_root.
+ *
+ *   attestation_root = keccak(
+ *       cpu_tee_measurement || gpu_attestation_report ||
+ *       driver_firmware_measurement || quasar_gpu_binary_hash ||
+ *       crypto_kernel_hash || ai_model_runtime_hash ||
+ *       precompile_binary_hash || policy_root || node_identity ||
+ *       epoch_be8 || cpu_tee_kind || gpu_tee_kind || io_level)
+ *
+ * Endianness: epoch is encoded big-endian (8 bytes). Kinds and io_level are
+ * single bytes. All hash fields go in declaration order.
+ *
+ * The function refuses to run if attestation == NULL or out == NULL.
+ * Returns ATTESTATION_OK on success. */
+int attestation_compute_composite_root(
+    const NodeConfidentialAttestation* attestation,
+    uint8_t out_root[32]);
+
+/* Baseline expected by a validator. Hashes set to all-zero are wildcards
+ * (skip that field). min_io_level is the floor; anything weaker rejects.
+ * required_*_kind set to *_NONE means "any kind acceptable" (wildcard). */
+typedef struct {
+    uint8_t expected_quasar_gpu_binary_hash[32];
+    uint8_t expected_crypto_kernel_hash[32];
+    uint8_t expected_precompile_binary_hash[32];
+    uint8_t expected_policy_root[32];
+    uint8_t min_io_level;
+    uint8_t required_cpu_tee_kind;
+    uint8_t required_gpu_tee_kind;
+    uint8_t _reserved[5];
+} AttestationBaseline;
+
+/* Verify a remote node's attestation against an expected baseline.
+ * Returns ATTESTATION_OK on accept, ATTESTATION_ERR_VERIFY on first mismatch. */
+int attestation_verify_baseline(
+    const NodeConfidentialAttestation* attestation,
+    const AttestationBaseline* expected);
+
+#ifdef __cplusplus
+}  /* extern "C" */
+#endif
+
+#endif /* KINET_CRYPTO_ATTESTATION_COMPOSITE_H */

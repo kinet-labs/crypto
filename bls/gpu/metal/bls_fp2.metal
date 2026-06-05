@@ -160,4 +160,19 @@ kernel void k_fp2_conj(
     out[tid] = fp2_conj(a[tid]);
 }
 
+// Raw Fp inversion exposed for diagnostic tests. Treats first 48 bytes as Fp,
+// returns result in first 48 bytes, zeroes the c1 component.
+kernel void k_fp_inv_diag(
+    device const Fp2* a    [[buffer(0)]],
+    device       Fp2* out  [[buffer(1)]],
+    constant uint& n       [[buffer(2)]],
+    uint tid               [[thread_position_in_grid]])
+{
+    if (tid >= n) return;
+    Fp2 r;
+    r.c0 = fp_inv(a[tid].c0);
+    r.c1 = ZERO384;
+    out[tid] = r;
+}
+
 #endif // BLS_FP2_NO_KERNELS

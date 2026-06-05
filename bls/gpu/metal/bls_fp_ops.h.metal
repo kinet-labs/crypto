@@ -166,14 +166,25 @@ inline uint384 fp_neg(uint384 a) {
 
 // Fermat inversion: a^(p-2) mod p. Same modular inverse as blst's recip-addchain;
 // produces identical Montgomery output bytes.
+//
+// Left-to-right binary square-and-multiply over the 381-bit exponent (p-2).
+// Iterates from MSB to LSB; squares result every step, multiplies in `a` when
+// the current bit is set. Skip leading zero bits to keep `result` at 1 until
+// the first set bit (avoids unnecessary squarings before initialization).
 inline uint384 fp_inv(uint384 a) {
-    uint384 exp = BLS_P; exp.limbs[0] -= 2;
-    uint384 result = BLS_R;
-    uint384 base = a;
-    for (int i = 0; i < 6; i++) {
-        for (int bit = 0; bit < 64; bit++) {
-            if ((exp.limbs[i] >> bit) & 1) result = fp_mul(result, base);
-            base = fp_sqr(base);
+    uint384 exp = BLS_P;          // exp = p
+    // exp -= 2  on the bottom limb (low limb is well above 2)
+    exp.limbs[0] -= 2;
+
+    uint384 result = BLS_R;       // 1 in Montgomery form
+    bool started = false;
+    for (int i = 5; i >= 0; i--) {
+        for (int bit = 63; bit >= 0; bit--) {
+            if (started) result = fp_sqr(result);
+            if ((exp.limbs[i] >> bit) & 1) {
+                result = started ? fp_mul(result, a) : a;
+                started = true;
+            }
         }
     }
     return result;

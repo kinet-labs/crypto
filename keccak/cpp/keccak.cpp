@@ -108,7 +108,7 @@ inline void store64_le(uint8_t* p, uint64_t v) {
 
 }  // namespace
 
-extern "C" void kinet_keccak256(const uint8_t* input, size_t input_len, uint8_t out[32]) {
+extern "C" void keccak256(const uint8_t* input, size_t input_len, uint8_t out[32]) {
     constexpr int RATE = 136;       // bytes per absorb block
     constexpr int OUT_LEN = 32;
 
