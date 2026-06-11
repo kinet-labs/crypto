@@ -15,7 +15,7 @@
 //
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 
 #include "../cpp/slhdsa.hpp"
 
@@ -23,6 +23,7 @@ extern "C" int slhdsa_keygen(int mode,
                              const uint8_t /*seed*/[32],
                              uint8_t* pk,
                              uint8_t* sk) {
+    if (pk == nullptr || sk == nullptr) return CRYPTO_ERR_INPUT;
     bool ok = false;
     switch (mode) {
         case 2:  ok = kinet::crypto::slhdsa::keypair_sha2_128f(pk, sk);  break;
@@ -40,6 +41,8 @@ extern "C" int slhdsa_sign(int mode,
                            const uint8_t* sk,
                            const uint8_t* msg, size_t msg_len,
                            uint8_t* sig, size_t* sig_len) {
+    if (sk == nullptr || sig == nullptr || sig_len == nullptr) return CRYPTO_ERR_INPUT;
+    if (msg_len > 0 && msg == nullptr) return CRYPTO_ERR_INPUT;
     bool ok = false;
     switch (mode) {
         case 2:  ok = kinet::crypto::slhdsa::sign_sha2_128f(sig, sig_len, msg, msg_len, sk);  break;
@@ -57,6 +60,9 @@ extern "C" int slhdsa_verify(int mode,
                              const uint8_t* pk,
                              const uint8_t* msg, size_t msg_len,
                              const uint8_t* sig, size_t sig_len) {
+    if (pk == nullptr || sig == nullptr) return CRYPTO_ERR_INPUT;
+    if (msg_len > 0 && msg == nullptr) return CRYPTO_ERR_INPUT;
+    if (sig_len == 0) return CRYPTO_ERR_INPUT;
     bool ok = false;
     switch (mode) {
         case 2:  ok = kinet::crypto::slhdsa::verify_sha2_128f(sig, sig_len, msg, msg_len, pk);  break;

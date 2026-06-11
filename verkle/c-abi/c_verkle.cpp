@@ -4,7 +4,7 @@
 // after running input validation.
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "../cpp/verkle.hpp"
 
 extern "C" int verkle_commit(const uint8_t* coeffs, size_t n, uint8_t commit[32]) {

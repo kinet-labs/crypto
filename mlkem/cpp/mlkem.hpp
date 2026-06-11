@@ -2,8 +2,9 @@
 // kinet-labs/crypto/mlkem - ML-KEM (FIPS 203) C++ surface
 // =============================================================================
 //
-// Thin wrappers over the vendored PQClean reference implementation
-// (cpp/pqclean/ml-kem-{512,768,1024}/, CC0 / public domain).
+// Thin wrappers over the PQClean reference implementation pulled via
+// FetchContent from kinet-labs/pqclean (crypto_kem/ml-kem-{512,768,1024}/clean,
+// CC0 / public domain).
 //
 // FIPS 203 NIST levels:
 //   ml-kem-512  -> NIST L1 (Kyber512 in legacy spec)

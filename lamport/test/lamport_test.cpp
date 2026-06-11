@@ -11,13 +11,11 @@
 //
 // 10 vectors total, each ~16 KB of state.
 //
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-// Copyright (C) 2025-2026 Kinet Industries Inc.
 // =============================================================================
 
 #include "../cpp/lamport.hpp"
 #include "../../sha256/cpp/sha256.hpp"
-#include "kinet_crypto.h"
+#include "crypto.h"
 
 #include <array>
 #include <cstdint>

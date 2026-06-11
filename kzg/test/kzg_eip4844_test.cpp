@@ -15,7 +15,7 @@
 // `true`, `false`) and bullet-style sequences (`- '0x...'`).
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "kzg_blob.hpp"
 
 #include <algorithm>

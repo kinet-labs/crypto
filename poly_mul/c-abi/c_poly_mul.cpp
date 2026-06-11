@@ -5,7 +5,7 @@
 // arbitrary primes is the generic NTT path (ntt_forward / ntt_inverse), not
 // poly_mul (which encodes a specific negacyclic ring).
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "ntt.hpp"
 #include "poly_mul.hpp"
 

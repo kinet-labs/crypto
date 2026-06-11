@@ -15,15 +15,18 @@
 extern "C" {
 
 void Fp_copy(kinet::banderwagon::Fp* dst, const kinet::banderwagon::Fp* src) {
+    if (dst == nullptr || src == nullptr) return;
     *dst = *src;
 }
 
 void Fr_copy(kinet::banderwagon::Fr* dst, const kinet::banderwagon::Fr* src) {
+    if (dst == nullptr || src == nullptr) return;
     *dst = *src;
 }
 
 void Element_copy(kinet::banderwagon::Element* dst,
                   const kinet::banderwagon::Element* src) {
+    if (dst == nullptr || src == nullptr) return;
     *dst = *src;
 }
 

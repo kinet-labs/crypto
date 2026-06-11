@@ -8,7 +8,7 @@
 //   * AES-256-GCM       (NIST SP 800-38D, 96-bit IV)
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "../cpp/aead.hpp"
 
 extern "C" int aead_chacha20poly1305_seal(

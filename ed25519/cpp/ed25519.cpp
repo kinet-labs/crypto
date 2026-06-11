@@ -1,15 +1,19 @@
-// Ed25519 host CPU implementation. Wraps ed25519-donna (vendored under
-// cpp/ed25519-donna/) and exposes the kinet::crypto::ed25519 API.
+// Ed25519 host CPU implementation. Wraps ed25519-donna (FetchContent'd from
+// kinet-labs/ed25519-donna -- see deps/ed25519-donna/) and exposes the
+// kinet::crypto::ed25519 API.
 //
 // Strategy: include the upstream `ed25519.c` translation unit directly,
 // pre-loaded with our compile-time switches:
-//   ED25519_CUSTOMHASH      => use cpp/ed25519-donna/ed25519-hash-custom.h
-//   ED25519_CUSTOMRANDOM    => use cpp/ed25519-donna/ed25519-randombytes-custom.h
+//   ED25519_CUSTOMHASH      => use cpp/ed25519-hash-custom.h (kinet shim)
+//   ED25519_CUSTOMRANDOM    => use cpp/ed25519-randombytes-custom.h (kinet shim)
 //   ED25519_NO_INLINE_ASM   => skip x86 inline-asm choose-niels (works on ARM64)
 //   ED25519_SUFFIX=_donna   => upstream symbols become *_donna so the wrapper
 //                              namespace owns the public surface.
 //
-// All upstream code stays unmodified inside cpp/ed25519-donna/.
+// The kinet-modified shims live alongside this TU at cpp/. They are picked up
+// in preference to the upstream stubs of the same name (which sit in the
+// fetched kinet-labs/ed25519-donna source dir) because cpp/ is added to the
+// include path BEFORE the fetched dir in ed25519/CMakeLists.txt.
 
 #include "ed25519.hpp"
 
@@ -25,7 +29,7 @@
 // as C++ (clang/gcc both accept this; no language-level constructs in the
 // upstream code rely on C-only semantics).
 extern "C" {
-#include "ed25519-donna/ed25519.c"
+#include "ed25519.c"
 }
 
 // ----- Forward declarations of upstream entry points ------------------------

@@ -18,9 +18,17 @@
 // preferred GPU backend with crypto_gpu_set_default(); operations that can
 // dispatch to GPU will check availability and fall back to CPU on miss.
 //
-// Determinism: every CPU and GPU code path returns byte-identical output for
-// any given input across all backends. This is a tested invariant (see
-// <alg>/test/<alg>_determinism_test.cpp for each algorithm).
+// Wire status: this header advertises the C-ABI surface for every algorithm
+// in the repo. Not every symbol has a CPU body wired yet — placeholders
+// return CRYPTO_ERR_NOTIMPL with full nullptr argument validation. Use
+// crypto_status() / crypto_alg_status(alg_bit) to detect at runtime which
+// algorithms have wired bodies vs NOTIMPL placeholders before dispatching.
+//
+// Determinism (where wired): every CPU and GPU code path that returns
+// CRYPTO_OK returns byte-identical output for any given input across all
+// backends. This is a tested invariant for the wired algorithms (see
+// <alg>/test/<alg>_determinism_test.cpp). Algorithms still in
+// CRYPTO_ERR_NOTIMPL state make no determinism guarantee until wired.
 //
 // =============================================================================
 
@@ -78,6 +86,63 @@ int crypto_gpu_get_default(void);
 
 // Returns library version as a static null-terminated string ("MAJOR.MINOR.PATCH").
 const char* crypto_version(void);
+
+// =============================================================================
+// Wire status — runtime introspection
+// =============================================================================
+//
+// crypto_status() returns a 64-bit bitmask: bit set ⇒ algorithm has a wired
+// CPU body (calling its symbols can return CRYPTO_OK). Bit clear ⇒ all
+// symbols return CRYPTO_ERR_NOTIMPL (after argument validation).
+//
+// Consumers MUST call crypto_status() at startup and route around any
+// algorithm whose bit is clear, instead of relying on per-call NOTIMPL.
+//
+// Flag values are stable for the lifetime of the v1.x C-ABI.
+// =============================================================================
+
+#define CRYPTO_ALG_SHA256          (1ULL << 0)
+#define CRYPTO_ALG_KECCAK256       (1ULL << 1)
+#define CRYPTO_ALG_BLAKE2B         (1ULL << 2)
+#define CRYPTO_ALG_BLAKE3          (1ULL << 3)
+#define CRYPTO_ALG_RIPEMD160       (1ULL << 4)
+#define CRYPTO_ALG_AEAD_CHACHA     (1ULL << 5)
+#define CRYPTO_ALG_AEAD_AES_GCM    (1ULL << 6)
+#define CRYPTO_ALG_SECP256K1       (1ULL << 7)   /* recover only; sign/verify still NOTIMPL */
+#define CRYPTO_ALG_SECP256R1       (1ULL << 8)   /* NOTIMPL */
+#define CRYPTO_ALG_ED25519         (1ULL << 9)
+#define CRYPTO_ALG_SR25519         (1ULL << 10)  /* NOTIMPL */
+#define CRYPTO_ALG_BN254           (1ULL << 11)  /* add/mul/pairing wired */
+#define CRYPTO_ALG_BLS12_381       (1ULL << 12)  /* canonical bls12_381_* surface; legacy bls_* still NOTIMPL */
+#define CRYPTO_ALG_KZG             (1ULL << 13)
+#define CRYPTO_ALG_MLDSA           (1ULL << 14)
+#define CRYPTO_ALG_MLKEM           (1ULL << 15)
+#define CRYPTO_ALG_SLHDSA          (1ULL << 16)
+#define CRYPTO_ALG_FROST           (1ULL << 17)  /* NOTIMPL */
+#define CRYPTO_ALG_CGGMP21         (1ULL << 18)  /* NOTIMPL */
+#define CRYPTO_ALG_RINGTAIL        (1ULL << 19)  /* NOTIMPL */
+#define CRYPTO_ALG_IPA             (1ULL << 20)  /* modern create_proof/check_proof wired; legacy commit/verify NOTIMPL */
+#define CRYPTO_ALG_LAMPORT         (1ULL << 21)
+#define CRYPTO_ALG_PEDERSEN        (1ULL << 22)  /* vector form wired; legacy single-scalar NOTIMPL */
+#define CRYPTO_ALG_POSEIDON_BN254  (1ULL << 23)
+#define CRYPTO_ALG_POSEIDON_GLDLKS (1ULL << 24)  /* NOTIMPL */
+#define CRYPTO_ALG_VERKLE          (1ULL << 25)  /* NOTIMPL — IPA blocker */
+#define CRYPTO_ALG_MODEXP          (1ULL << 26)
+#define CRYPTO_ALG_EVM256          (1ULL << 27)
+#define CRYPTO_ALG_NTT             (1ULL << 28)
+#define CRYPTO_ALG_POLY_MUL        (1ULL << 29)
+#define CRYPTO_ALG_BANDERWAGON     (1ULL << 30)
+#define CRYPTO_ALG_ATTESTATION     (1ULL << 31)
+
+// crypto_status returns a bitmask of the algorithms that have wired CPU
+// bodies in this build. A bit is set when at least one operation in that
+// algorithm can return a value other than CRYPTO_ERR_NOTIMPL after argument
+// validation. Stable across the v1.x ABI.
+uint64_t crypto_status(void);
+
+// crypto_alg_status returns 1 iff the bit corresponding to alg_flag is set
+// in crypto_status(). alg_flag must be exactly one CRYPTO_ALG_* value.
+int crypto_alg_status(uint64_t alg_flag);
 
 // =============================================================================
 // Hashes

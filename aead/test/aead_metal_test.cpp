@@ -3,7 +3,7 @@
 // tuples with varied lengths, encrypts on CPU and on GPU, and asserts the
 // resulting ciphertext+tag are byte-identical.
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "../cpp/aead.hpp"
 
 #include <cstdio>

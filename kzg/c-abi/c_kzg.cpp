@@ -20,6 +20,8 @@
 
 extern "C" int kzg_verify_proof(const uint8_t commit[48], const uint8_t z[32],
                                 const uint8_t y[32], const uint8_t proof[48]) {
+    if (commit == nullptr || z == nullptr || y == nullptr || proof == nullptr)
+        return CRYPTO_ERR_INPUT;
     // Compute versioned hash from the commitment so the body's invariant
     // check is self-consistent.
     std::byte versioned_hash[cevm::crypto::SHA256_HASH_SIZE];

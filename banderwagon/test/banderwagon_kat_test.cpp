@@ -19,7 +19,7 @@
 // =============================================================================
 
 #include "kinet/crypto/banderwagon.h"
-#include "kinet_crypto.h"
+#include "crypto.h"
 
 #include "../cpp/banderwagon.hpp"
 

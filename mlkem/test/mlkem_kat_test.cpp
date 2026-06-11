@@ -21,14 +21,14 @@
 //
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "pqclean_kat.h"
 #include "pqclean_kat_digests.h"
 
 extern "C" {
-#include "pqclean/ml-kem-512/api.h"
-#include "pqclean/ml-kem-768/api.h"
-#include "pqclean/ml-kem-1024/api.h"
+#include "ml-kem-512/clean/api.h"
+#include "ml-kem-768/clean/api.h"
+#include "ml-kem-1024/clean/api.h"
 }
 
 #include <cstddef>

@@ -1,6 +1,6 @@
 // NTT C-ABI shim — extern "C" entry points only. Body lives in cpp/ntt.cpp.
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "ntt.hpp"
 
 #include <cstdint>

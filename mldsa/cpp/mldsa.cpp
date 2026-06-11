@@ -2,18 +2,18 @@
 // kinet-labs/crypto/mldsa - PQClean dispatch
 // =============================================================================
 // Bridges kinet::crypto::mldsa::{keypair,sign,verify}_{44,65,87} into the three
-// vendored PQClean ML-DSA reference implementations under
-// cpp/pqclean/ml-dsa-{44,65,87}/. The PQClean per-set symbols carry a unique
-// PQCLEAN_MLDSA{44,65,87}_CLEAN_ namespace prefix so all three coexist in the
-// final static library with no symbol collisions.
+// PQClean ML-DSA reference implementations pulled via FetchContent from
+// kinet-labs/pqclean (crypto_sign/ml-dsa-{44,65,87}/clean). The PQClean per-set
+// symbols carry a unique PQCLEAN_MLDSA{44,65,87}_CLEAN_ namespace prefix so
+// all three coexist in the final static library with no symbol collisions.
 // =============================================================================
 
 #include "mldsa.hpp"
 
 extern "C" {
-#include "pqclean/ml-dsa-44/api.h"
-#include "pqclean/ml-dsa-65/api.h"
-#include "pqclean/ml-dsa-87/api.h"
+#include "ml-dsa-44/clean/api.h"
+#include "ml-dsa-65/clean/api.h"
+#include "ml-dsa-87/clean/api.h"
 }
 
 namespace kinet::crypto::mldsa {

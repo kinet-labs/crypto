@@ -17,7 +17,7 @@
 // inputs return CRYPTO_ERR_INPUT.
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "../cpp/bn254.hpp"
 #include "../cpp/ecc.hpp"
 
@@ -28,6 +28,7 @@
 
 extern "C" int bn254_add(const uint8_t in[128], uint8_t out[64])
 {
+    if (in == nullptr || out == nullptr) return CRYPTO_ERR_INPUT;
     using namespace evmmax::bn254;
 
     const std::span<const uint8_t, 128> input{in, 128};
@@ -45,6 +46,7 @@ extern "C" int bn254_add(const uint8_t in[128], uint8_t out[64])
 
 extern "C" int bn254_mul(const uint8_t in[96], uint8_t out[64])
 {
+    if (in == nullptr || out == nullptr) return CRYPTO_ERR_INPUT;
     using namespace evmmax::bn254;
 
     const std::span<const uint8_t, 96> input{in, 96};
@@ -60,6 +62,8 @@ extern "C" int bn254_mul(const uint8_t in[96], uint8_t out[64])
 
 extern "C" int bn254_pairing(const uint8_t* pairs, size_t n_pairs, uint8_t out[32])
 {
+    if (out == nullptr) return CRYPTO_ERR_INPUT;
+    if (n_pairs > 0 && pairs == nullptr) return CRYPTO_ERR_INPUT;
     using namespace evmmax::bn254;
 
     std::vector<std::pair<Point, ExtPoint>> v;

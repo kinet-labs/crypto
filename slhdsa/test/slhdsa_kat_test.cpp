@@ -26,17 +26,17 @@
 //
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "pqclean_kat.h"
 #include "pqclean_kat_digests.h"
 
 extern "C" {
-#include "pqclean/sphincs-sha2-128f-simple/api.h"
-#include "pqclean/sphincs-sha2-192f-simple/api.h"
-#include "pqclean/sphincs-sha2-256f-simple/api.h"
-#include "pqclean/sphincs-shake-128f-simple/api.h"
-#include "pqclean/sphincs-shake-192f-simple/api.h"
-#include "pqclean/sphincs-shake-256f-simple/api.h"
+#include "sphincs-sha2-128f-simple/clean/api.h"
+#include "sphincs-sha2-192f-simple/clean/api.h"
+#include "sphincs-sha2-256f-simple/clean/api.h"
+#include "sphincs-shake-128f-simple/clean/api.h"
+#include "sphincs-shake-192f-simple/clean/api.h"
+#include "sphincs-shake-256f-simple/clean/api.h"
 }
 
 #include <cstddef>

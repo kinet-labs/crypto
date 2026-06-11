@@ -1,8 +1,6 @@
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // ipa/c-abi/c_ipa.cpp -- C ABI for the Banderwagon IPA prover/verifier.
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "../cpp/ipa.hpp"
 
 #include <cstring>
@@ -10,10 +8,14 @@
 
 extern "C" {
 
-int ipa_commit(const uint8_t* /*coeffs*/, size_t /*n*/, uint8_t /*commit*/[48]) {
+int ipa_commit(const uint8_t* coeffs, size_t n, uint8_t commit[48]) {
+    if (commit == nullptr) return CRYPTO_ERR_INPUT;
+    if (n > 0 && coeffs == nullptr) return CRYPTO_ERR_INPUT;
     return CRYPTO_ERR_NOTIMPL;
 }
-int ipa_verify(const uint8_t /*commit*/[48], const uint8_t* /*proof*/, size_t /*proof_len*/) {
+int ipa_verify(const uint8_t commit[48], const uint8_t* proof, size_t proof_len) {
+    if (commit == nullptr) return CRYPTO_ERR_INPUT;
+    if (proof_len > 0 && proof == nullptr) return CRYPTO_ERR_INPUT;
     return CRYPTO_ERR_NOTIMPL;
 }
 

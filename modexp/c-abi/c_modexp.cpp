@@ -13,7 +13,7 @@
 // reduced modulo m before the operation, matching the Yellow Paper.
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "../cpp/modexp.hpp"
 
 #include <intx/intx.hpp>
@@ -37,6 +37,8 @@ inline void u256_to_be32(const intx::uint256& v, uint8_t out[32]) noexcept
 extern "C" int evm256_addmod(const uint8_t a[32], const uint8_t b[32],
                              const uint8_t m[32], uint8_t out[32])
 {
+    if (a == nullptr || b == nullptr || m == nullptr || out == nullptr)
+        return CRYPTO_ERR_INPUT;
     const auto am = be32_to_u256(a);
     const auto bm = be32_to_u256(b);
     const auto mm = be32_to_u256(m);
@@ -60,6 +62,8 @@ extern "C" int evm256_addmod(const uint8_t a[32], const uint8_t b[32],
 extern "C" int evm256_mulmod(const uint8_t a[32], const uint8_t b[32],
                              const uint8_t m[32], uint8_t out[32])
 {
+    if (a == nullptr || b == nullptr || m == nullptr || out == nullptr)
+        return CRYPTO_ERR_INPUT;
     const auto am = be32_to_u256(a);
     const auto bm = be32_to_u256(b);
     const auto mm = be32_to_u256(m);
@@ -83,6 +87,10 @@ extern "C" int modexp(const uint8_t* base, size_t base_len,
                       const uint8_t* mod,  size_t mod_len,
                       uint8_t* out)
 {
+    if (base_len > 0 && base == nullptr) return CRYPTO_ERR_INPUT;
+    if (exp_len  > 0 && exp  == nullptr) return CRYPTO_ERR_INPUT;
+    if (mod_len  > 0 && mod  == nullptr) return CRYPTO_ERR_INPUT;
+    if (mod_len  > 0 && out  == nullptr) return CRYPTO_ERR_INPUT;
     if (mod_len == 0)
         return CRYPTO_OK;  // Empty modulus → empty output (nothing to write).
 

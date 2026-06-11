@@ -6,17 +6,20 @@
 //
 // poseidon_goldilocks remains NOTIMPL until the Goldilocks variant lands.
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "../cpp/poseidon.hpp"
 
 #include <cstring>
 
-extern "C" int poseidon_goldilocks(const uint8_t*, size_t, uint8_t[32]) {
+extern "C" int poseidon_goldilocks(const uint8_t* in, size_t in_len, uint8_t out[32]) {
+    if (out == nullptr) return CRYPTO_ERR_INPUT;
+    if (in_len > 0 && in == nullptr) return CRYPTO_ERR_INPUT;
     return CRYPTO_ERR_NOTIMPL;
 }
 
 extern "C" int poseidon_bn254(const uint8_t* in, size_t in_len, uint8_t out[32]) {
     if (out == nullptr) return CRYPTO_ERR_INPUT;
+    if (in_len > 0 && in == nullptr) return CRYPTO_ERR_INPUT;
     if (in_len % 32 != 0) return CRYPTO_ERR_LENGTH;
 
     // gnark-crypto's NewMerkleDamgardHasher uses an all-zero IV and feeds

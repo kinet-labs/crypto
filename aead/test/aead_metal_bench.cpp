@@ -8,7 +8,7 @@
 //
 // Skipped silently when KINET_CRYPTO_AEAD_METALLIB is unset.
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "../cpp/aead.hpp"
 
 #include <algorithm>

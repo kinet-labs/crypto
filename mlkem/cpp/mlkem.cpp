@@ -2,17 +2,17 @@
 // kinet-labs/crypto/mlkem - PQClean dispatch
 // =============================================================================
 // Bridges kinet::crypto::mlkem::{keypair,encap,decap}_{512,768,1024} into the
-// three vendored PQClean ML-KEM reference implementations under
-// cpp/pqclean/ml-kem-{512,768,1024}/. Each PQClean impl carries a unique
-// PQCLEAN_MLKEM{512,768,1024}_CLEAN_ symbol prefix.
+// three PQClean ML-KEM reference implementations pulled via FetchContent from
+// kinet-labs/pqclean (crypto_kem/ml-kem-{512,768,1024}/clean). Each PQClean impl
+// carries a unique PQCLEAN_MLKEM{512,768,1024}_CLEAN_ symbol prefix.
 // =============================================================================
 
 #include "mlkem.hpp"
 
 extern "C" {
-#include "pqclean/ml-kem-512/api.h"
-#include "pqclean/ml-kem-768/api.h"
-#include "pqclean/ml-kem-1024/api.h"
+#include "ml-kem-512/clean/api.h"
+#include "ml-kem-768/clean/api.h"
+#include "ml-kem-1024/clean/api.h"
 }
 
 namespace kinet::crypto::mlkem {

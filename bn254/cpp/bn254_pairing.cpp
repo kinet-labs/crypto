@@ -199,12 +199,15 @@ inline Fp12 frobenius_cube(const Fp12& x) noexcept {
     return z;
 }
 
+}  // namespace (close anonymous to expose cyclotomic_sqr publicly)
+
 // =============================================================================
 // Granger-Scott cyclotomic squaring (eprint 2009/565 §3.2). Equivalent to
-// gnark-crypto's CyclotomicSquare.
+// gnark-crypto's CyclotomicSquare. Public so the GPU determinism harness can
+// invoke it as the CPU oracle.
 // =============================================================================
 
-inline Fp12 cyclotomic_sqr(const Fp12& x) noexcept {
+Fp12 cyclotomic_sqr(const Fp12& x) noexcept {
     Fp2 t0 = fp2_sqr(x.c1.b1);
     Fp2 t1 = fp2_sqr(x.c0.b0);
     Fp2 t6 = fp2_sub(fp2_sub(fp2_sqr(fp2_add(x.c1.b1, x.c0.b0)), t0), t1);
@@ -235,6 +238,8 @@ inline Fp12 cyclotomic_n_sqr(Fp12 z, int n) noexcept {
     for (int i = 0; i < n; ++i) z = cyclotomic_sqr(z);
     return z;
 }
+
+namespace {  // re-open anonymous namespace for the rest of the file
 
 // =============================================================================
 // Expt: x^t with t = 4965661367192848881 (the curve seed). Uses the
@@ -606,6 +611,10 @@ Fp12 multi_pair(const G1Affine* P, const G2Affine* Q, std::size_t n) noexcept {
 
 bool multi_pairing_check(const G1Affine* P, const G2Affine* Q, std::size_t n) noexcept {
     return fp12_is_one(multi_pair(P, Q, n));
+}
+
+Fp12 cyclotomic_sqr_public(const Fp12& x) noexcept {
+    return cyclotomic_sqr(x);
 }
 
 }  // namespace kinet::crypto::bn254

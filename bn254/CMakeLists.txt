@@ -6,13 +6,19 @@ kinet_add_algorithm(
     SOURCES
         c-abi/c_bn254.cpp
         cpp/bn254.cpp
-        cpp/pairing/pairing.cpp
+        cpp/bn254_hash_to_curve.cpp
+        cpp/bn254_pairing.cpp
     HEADERS
         cpp/bn254.hpp
+        cpp/bn254_fp.hpp
+        cpp/bn254_fp2.hpp
+        cpp/bn254_fp6.hpp
+        cpp/bn254_fp12.hpp
+        cpp/bn254_g1.hpp
+        cpp/bn254_g2.hpp
+        cpp/bn254_hash_to_curve.hpp
+        cpp/bn254_pairing.hpp
         cpp/ecc.hpp
-        cpp/pairing/fields.hpp
-        cpp/pairing/utils.hpp
-        cpp/pairing/field_template.hpp
     CABI    c-abi/c_bn254.cpp
     METAL_DRIVER  gpu/metal/zk_metal.mm
     METAL_HEADERS gpu/metal/zk_metal.h

@@ -10,7 +10,7 @@
 // full RFC 8439 §2.3-§A.5 sweep for ChaCha20-Poly1305). It is the only
 // test that exercises the AES-256-GCM C-ABI and C++ surface.
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "../cpp/aead.hpp"
 
 #include <cstdint>

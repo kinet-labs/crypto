@@ -39,7 +39,7 @@ ExternalProject_Add(
     blst_oracle
     EXCLUDE_FROM_ALL TRUE
     PREFIX ${PROJECT_BINARY_DIR}/blst-oracle
-    URL https://github.com/supranational/blst/archive/refs/tags/v0.3.15.tar.gz
+    URL https://github.com/kinet-labs/blst/archive/refs/tags/v0.3.15.tar.gz
     URL_HASH SHA256=9e503ff6b50e044efb075d260c81c751702b3ed6f2e45394b0833834e71c3afa
     DOWNLOAD_NO_PROGRESS TRUE
     CONFIGURE_COMMAND ""
@@ -63,4 +63,4 @@ set_target_properties(
     IMPORTED_LOCATION ${SOURCE_DIR}/${CMAKE_STATIC_LIBRARY_PREFIX}blst${CMAKE_STATIC_LIBRARY_SUFFIX}
 )
 
-message(STATUS "[bls test oracle] blst v0.3.15 (test-only, NEVER linked into production)")
+message(STATUS "[bls test oracle] kinet-labs/blst v0.3.15 (test-only, NEVER linked into production)")

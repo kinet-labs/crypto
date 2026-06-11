@@ -14,7 +14,7 @@
 // (Apache-2.0). Mathematical content traceable to EIP-4844 §3.4.
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 
 #include <array>
 #include <cstdio>

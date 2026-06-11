@@ -42,4 +42,10 @@ Fp12 multi_pair(const G1Affine* P, const G2Affine* Q, std::size_t n) noexcept;
 // Predicate form -- returns true iff the multi-pairing equals 1 in GT.
 bool multi_pairing_check(const G1Affine* P, const G2Affine* Q, std::size_t n) noexcept;
 
+// Granger-Scott cyclotomic squaring on an Fp12 element from the cyclotomic
+// subgroup (i.e. unitary, conj == inv). Inputs that aren't unitary will not
+// match the optimised square -- the GPU determinism harness only feeds
+// post-final-exp-easy-part Fp12 values to this routine.
+Fp12 cyclotomic_sqr_public(const Fp12& x) noexcept;
+
 }  // namespace kinet::crypto::bn254

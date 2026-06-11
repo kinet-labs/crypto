@@ -9,7 +9,7 @@
 //
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 
 #include "../cpp/mlkem.hpp"
 
@@ -17,6 +17,7 @@ extern "C" int mlkem_keygen(int mode,
                             const uint8_t /*seed*/[32],
                             uint8_t* pk,
                             uint8_t* sk) {
+    if (pk == nullptr || sk == nullptr) return CRYPTO_ERR_INPUT;
     bool ok = false;
     switch (mode) {
         case 2: ok = kinet::crypto::mlkem::keypair_512(pk, sk);  break;
@@ -31,6 +32,7 @@ extern "C" int mlkem_encap(int mode,
                            const uint8_t* pk,
                            uint8_t* ct,
                            uint8_t ss[32]) {
+    if (pk == nullptr || ct == nullptr || ss == nullptr) return CRYPTO_ERR_INPUT;
     bool ok = false;
     switch (mode) {
         case 2: ok = kinet::crypto::mlkem::encap_512(ct, ss, pk);  break;
@@ -45,6 +47,7 @@ extern "C" int mlkem_decap(int mode,
                            const uint8_t* sk,
                            const uint8_t* ct,
                            uint8_t ss[32]) {
+    if (sk == nullptr || ct == nullptr || ss == nullptr) return CRYPTO_ERR_INPUT;
     bool ok = false;
     switch (mode) {
         case 2: ok = kinet::crypto::mlkem::decap_512(ss, ct, sk);  break;

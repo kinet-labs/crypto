@@ -1,17 +1,22 @@
 # slhdsa - SLH-DSA / FIPS 205 (stateless hash-based signatures)
 #
-# CPU body: vendored PQClean reference (cpp/pqclean/sphincs-{sha2,shake}-{128,
-# 192,256}f-simple/clean, CC0 / public domain). Six 'f' (fast) parameter sets;
+# CPU body: PQClean reference (CC0 / public domain) pulled via FetchContent
+# from kinet-labs/pqclean (see deps/pqclean/). Six 'f' (fast) parameter sets;
 # the 's' (small) variants are out of scope.
+#
+# Source paths (in the fetched kinet-labs/pqclean tree):
+#   ${KINETCPP_PQCLEAN_SOURCE_DIR}/common/{fips202,sha2,randombytes}.c
+#   ${KINETCPP_PQCLEAN_SOURCE_DIR}/crypto_sign/sphincs-{sha2,shake}-{128,192,256}f-simple/clean/*.c
 include(KinetAlgorithm)
 
 set(_slhdsa_root ${CMAKE_CURRENT_SOURCE_DIR})
+set(_pqclean ${KINETCPP_PQCLEAN_SOURCE_DIR})
 
 # common: fips202 (used by SHAKE family), sha2 (used by SHA2 family).
 # randombytes is split below so KAT tests can swap a deterministic DRBG.
 set(_slhdsa_common_srcs
-    ${_slhdsa_root}/cpp/pqclean/common/fips202.c
-    ${_slhdsa_root}/cpp/pqclean/common/sha2.c)
+    ${_pqclean}/common/fips202.c
+    ${_pqclean}/common/sha2.c)
 
 set(_slhdsa_sets
     sphincs-sha2-128f-simple
@@ -22,13 +27,13 @@ set(_slhdsa_sets
     sphincs-shake-256f-simple)
 
 foreach(_s IN LISTS _slhdsa_sets)
-    set(_dir ${_slhdsa_root}/cpp/pqclean/${_s})
+    set(_dir ${_pqclean}/crypto_sign/${_s}/clean)
     string(REPLACE "-" "_" _tag ${_s})
     file(GLOB _srcs ${_dir}/*.c)
     add_library(slhdsa_pqclean_${_tag} OBJECT ${_srcs} ${_slhdsa_common_srcs})
     target_include_directories(slhdsa_pqclean_${_tag} PRIVATE
         ${_dir}
-        ${_slhdsa_root}/cpp/pqclean/common)
+        ${_pqclean}/common)
     set_target_properties(slhdsa_pqclean_${_tag} PROPERTIES
         POSITION_INDEPENDENT_CODE ON
         C_STANDARD 99)
@@ -36,9 +41,9 @@ endforeach()
 
 # Production randombytes (getentropy) backend.
 add_library(slhdsa_pqclean_rb OBJECT
-    ${_slhdsa_root}/cpp/pqclean/common/randombytes.c)
+    ${_pqclean}/common/randombytes.c)
 target_include_directories(slhdsa_pqclean_rb PRIVATE
-    ${_slhdsa_root}/cpp/pqclean/common)
+    ${_pqclean}/common)
 set_target_properties(slhdsa_pqclean_rb PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     C_STANDARD 99)
@@ -63,4 +68,5 @@ target_sources(slhdsa PRIVATE $<TARGET_OBJECTS:slhdsa_pqclean_rb>)
 
 target_include_directories(slhdsa_cpu PRIVATE
     ${_slhdsa_root}/cpp
-    ${_slhdsa_root}/cpp/pqclean/common)
+    ${_pqclean}/crypto_sign
+    ${_pqclean}/common)

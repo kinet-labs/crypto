@@ -4,7 +4,7 @@
 // header-only intx + evmmax (vendored at crypto/deps/).
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "evm256.hpp"
 
 extern "C" int evm256_mulmod(const uint8_t a[32], const uint8_t b[32],

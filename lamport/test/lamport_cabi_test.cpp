@@ -5,7 +5,7 @@
 // lamport_verify) dispatch to the real C++ body and DO NOT return NOTIMPL.
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 
 #include <cstdint>
 #include <cstdio>

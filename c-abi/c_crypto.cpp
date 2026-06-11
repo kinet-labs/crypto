@@ -47,3 +47,46 @@ extern "C" int crypto_gpu_get_default(void) {
 extern "C" const char* crypto_version(void) {
     return "1.0.0";
 }
+
+// =============================================================================
+// crypto_status — bitmask of wired algorithms
+// =============================================================================
+// Built from the actual wire state of every c-abi shim. Updated when a
+// previously NOTIMPL algorithm is wired. Stable across the v1.x C-ABI.
+//
+// "Wired" = at least one operation in the algorithm can return a value
+// other than CRYPTO_ERR_NOTIMPL after argument validation.
+// =============================================================================
+
+extern "C" uint64_t crypto_status(void) {
+    return CRYPTO_ALG_SHA256
+         | CRYPTO_ALG_KECCAK256
+         | CRYPTO_ALG_BLAKE2B
+         | CRYPTO_ALG_BLAKE3
+         | CRYPTO_ALG_RIPEMD160
+         | CRYPTO_ALG_AEAD_CHACHA
+         | CRYPTO_ALG_AEAD_AES_GCM
+         | CRYPTO_ALG_SECP256K1     /* recover wired; sign/verify NOTIMPL */
+         | CRYPTO_ALG_ED25519
+         | CRYPTO_ALG_BN254
+         | CRYPTO_ALG_BLS12_381     /* bls12_381_* canonical surface */
+         | CRYPTO_ALG_KZG
+         | CRYPTO_ALG_MLDSA
+         | CRYPTO_ALG_MLKEM
+         | CRYPTO_ALG_SLHDSA
+         | CRYPTO_ALG_IPA           /* create_proof / check_proof wired */
+         | CRYPTO_ALG_LAMPORT
+         | CRYPTO_ALG_PEDERSEN      /* vector commit form wired */
+         | CRYPTO_ALG_POSEIDON_BN254
+         | CRYPTO_ALG_MODEXP
+         | CRYPTO_ALG_EVM256
+         | CRYPTO_ALG_NTT
+         | CRYPTO_ALG_POLY_MUL
+         | CRYPTO_ALG_BANDERWAGON
+         | CRYPTO_ALG_ATTESTATION
+         ;
+}
+
+extern "C" int crypto_alg_status(uint64_t alg_flag) {
+    return (crypto_status() & alg_flag) ? 1 : 0;
+}

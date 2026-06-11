@@ -1,25 +1,28 @@
 # mlkem - ML-KEM / FIPS 203 (lattice-based key encapsulation)
 #
-# CPU body: vendored PQClean reference (cpp/pqclean/ml-kem-{512,768,1024}/
-# clean, CC0 / public domain). Each parameter set is a standalone OBJECT
-# library so its compile-time include directory points only at its own
-# headers (params.h, api.h, etc are not cross-shared).
+# CPU body: PQClean reference (CC0 / public domain) pulled via FetchContent
+# from kinet-labs/pqclean (see deps/pqclean/). Three parameter sets.
+#
+# Source paths (in the fetched kinet-labs/pqclean tree):
+#   ${KINETCPP_PQCLEAN_SOURCE_DIR}/common/{fips202,randombytes}.c
+#   ${KINETCPP_PQCLEAN_SOURCE_DIR}/crypto_kem/ml-kem-{512,768,1024}/clean/*.c
 include(KinetAlgorithm)
 
 set(_mlkem_root ${CMAKE_CURRENT_SOURCE_DIR})
+set(_pqclean ${KINETCPP_PQCLEAN_SOURCE_DIR})
 
 # fips202 only; randombytes is split out below so KAT tests can swap a
 # deterministic AES-CTR DRBG.
 set(_mlkem_common_srcs
-    ${_mlkem_root}/cpp/pqclean/common/fips202.c)
+    ${_pqclean}/common/fips202.c)
 
 foreach(_set 512 768 1024)
-    set(_dir ${_mlkem_root}/cpp/pqclean/ml-kem-${_set})
+    set(_dir ${_pqclean}/crypto_kem/ml-kem-${_set}/clean)
     file(GLOB _srcs ${_dir}/*.c)
     add_library(mlkem_pqclean_${_set} OBJECT ${_srcs} ${_mlkem_common_srcs})
     target_include_directories(mlkem_pqclean_${_set} PRIVATE
         ${_dir}
-        ${_mlkem_root}/cpp/pqclean/common)
+        ${_pqclean}/common)
     set_target_properties(mlkem_pqclean_${_set} PROPERTIES
         POSITION_INDEPENDENT_CODE ON
         C_STANDARD 99)
@@ -27,9 +30,9 @@ endforeach()
 
 # Production randombytes (getentropy) backend.
 add_library(mlkem_pqclean_rb OBJECT
-    ${_mlkem_root}/cpp/pqclean/common/randombytes.c)
+    ${_pqclean}/common/randombytes.c)
 target_include_directories(mlkem_pqclean_rb PRIVATE
-    ${_mlkem_root}/cpp/pqclean/common)
+    ${_pqclean}/common)
 set_target_properties(mlkem_pqclean_rb PROPERTIES
     POSITION_INDEPENDENT_CODE ON
     C_STANDARD 99)
@@ -50,7 +53,8 @@ target_sources(mlkem PRIVATE
 
 target_include_directories(mlkem_cpu PRIVATE
     ${_mlkem_root}/cpp
-    ${_mlkem_root}/cpp/pqclean/common)
+    ${_pqclean}/crypto_kem
+    ${_pqclean}/common)
 
 # Batched ML-KEM decap Metal driver (one thread per ciphertext).
 if(APPLE AND KINET_CRYPTO_ENABLE_METAL AND

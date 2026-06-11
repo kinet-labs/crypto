@@ -9,7 +9,7 @@
 //     reference (verified against gnark-crypto).
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 
 #include <array>
 #include <cstdint>

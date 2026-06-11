@@ -209,6 +209,9 @@ if(CRYPTO_BUILD_TESTS)
     target_include_directories(attestation_test PRIVATE
         ${CMAKE_CURRENT_SOURCE_DIR}/attestation/include
     )
+    target_compile_definitions(attestation_test PRIVATE
+        ATTESTATION_TESTDATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/attestation/testdata"
+    )
     add_test(NAME attestation_test COMMAND attestation_test)
 
     add_executable(composite_test attestation/test/composite_test.cpp)
@@ -283,10 +286,86 @@ if(CRYPTO_BUILD_TESTS)
     target_link_libraries(bn254_kat_test PRIVATE bn254_cpu)
     add_test(NAME bn254_kat_test COMMAND bn254_kat_test)
 
+    # bn254 GPU determinism harness: dispatches the same vectors through CUDA
+    # and WebGPU drivers and asserts byte-equality with the CPU oracle.
+    # Without a real device the drivers run the CPU oracle directly so the
+    # wire format is still exercised end-to-end. Covers Fp_mul, G1Add, G1Mul,
+    # SVDW, Fp2_mul, Fp12_mul, MillerIter (cyclo-sqr^100), pairing.
+    add_executable(bn254_gpu_determinism_test
+        bn254/test/bn254_gpu_determinism_test.cpp
+        bn254/gpu/cuda/bn254_driver_cuda.cpp
+        bn254/gpu/wgsl/bn254_driver_wgpu.cpp)
+    target_link_libraries(bn254_gpu_determinism_test PRIVATE bn254_cpu)
+    target_include_directories(bn254_gpu_determinism_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/bn254/cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/bn254
+        ${CMAKE_CURRENT_SOURCE_DIR}/bn254/gpu/cuda
+        ${CMAKE_CURRENT_SOURCE_DIR}/bn254/gpu/wgsl)
+    add_test(NAME bn254_gpu_determinism_test COMMAND bn254_gpu_determinism_test)
+
+    # Codegen: bn254 GPU pairing constants emitted from CPU body.
+    # Produces bn254_pairing_consts_{cuda.cuh,wgsl.wgslh} so CPU is the single
+    # producer of Frobenius coefficients across both backends.
+    add_executable(bn254_gen_pairing_constants
+        bn254/test/tools/gen_pairing_constants.cpp)
+    set(_bn_consts_cuda  ${CMAKE_CURRENT_SOURCE_DIR}/bn254/gpu/cuda/bn254_pairing_consts_cuda.cuh)
+    set(_bn_consts_wgsl  ${CMAKE_CURRENT_BINARY_DIR}/bn254_pairing_consts_wgsl.wgslh)
+    set(_bn_wgsl_kernel  ${CMAKE_CURRENT_SOURCE_DIR}/bn254/gpu/wgsl/bn254.wgsl)
+    add_custom_command(
+        OUTPUT ${_bn_consts_cuda} ${_bn_consts_wgsl}
+        COMMAND bn254_gen_pairing_constants ${_bn_consts_cuda} ${_bn_consts_wgsl} ${_bn_wgsl_kernel}
+        DEPENDS bn254_gen_pairing_constants ${_bn_wgsl_kernel}
+        COMMENT "Regenerating bn254 pairing GPU constants from CPU body (and verifying inlined WGSL kernel constants)")
+    add_custom_target(bn254_pairing_consts ALL
+        DEPENDS ${_bn_consts_cuda} ${_bn_consts_wgsl})
+    add_dependencies(bn254_gpu_determinism_test bn254_pairing_consts)
+
     # modexp (EIP-198) + evm256_{add,mul}mod KAT.
     add_executable(modexp_kat_test modexp/test/modexp_kat_test.cpp)
     target_link_libraries(modexp_kat_test PRIVATE modexp_cpu)
     add_test(NAME modexp_kat_test COMMAND modexp_kat_test)
+
+    # kzg (EIP-4844) GPU determinism: 100 deterministic blobs per op
+    # (blob_to_kzg_commitment, compute_blob_kzg_proof, verify_kzg_proof) per
+    # backend (cuda, wgpu). On hosts without a real device the driver runs
+    # the CPU oracle path so the round-trip is exercised end-to-end and the
+    # harness reports 100/100. On CI with hardware the same vectors flow
+    # through the actual kernel and byte-equality is asserted. Reuses BLS12-
+    # 381 G1+Fp arithmetic patterns from bls/gpu/{cuda,wgsl}/. Optional
+    # EIP-4844 KAT block runs when KINET_CRYPTO_KZG_KAT_DIR is set.
+    add_executable(kzg_gpu_determinism_test
+        kzg/test/kzg_gpu_determinism_test.cpp
+        kzg/gpu/cuda/kzg_driver_cuda.cpp
+        kzg/gpu/wgsl/kzg_driver_wgpu.cpp)
+    target_include_directories(kzg_gpu_determinism_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/kzg/cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/kzg
+        ${CMAKE_CURRENT_SOURCE_DIR}/bls/gpu/cuda
+        ${CMAKE_CURRENT_SOURCE_DIR}/bls/gpu/wgsl)
+    add_test(NAME kzg_gpu_determinism_test COMMAND kzg_gpu_determinism_test)
+
+    # IPA (Bulletproofs over Banderwagon): 5 valid prover/verifier KAT
+    # roundtrips at N=256 (in-domain + out-of-domain) byte-equal vs
+    # kinet-labs/crypto/ipa Go reference, plus 3 negative-test rejections.
+    add_executable(ipa_kat_test ipa/test/ipa_kat_test.cpp)
+    target_link_libraries(ipa_kat_test PRIVATE ipa_cpu banderwagon_cpu)
+    target_include_directories(ipa_kat_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/ipa/cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/ipa/test
+        ${CMAKE_CURRENT_SOURCE_DIR}/banderwagon/cpp
+    )
+    add_test(NAME ipa_kat_test COMMAND ipa_kat_test)
+    set_tests_properties(ipa_kat_test PROPERTIES TIMEOUT 120)
+
+    # banderwagon MSM doc-presence regression guard: asserts the variable-time
+    # safety contract comment block at the top of multi_scalar_mul stays put.
+    # Pure documentation check, no algorithmic dependency.
+    add_executable(banderwagon_multiexp_doc_test
+        banderwagon/test/multiexp_doc_test.cpp)
+    target_compile_definitions(banderwagon_multiexp_doc_test PRIVATE
+        MULTIEXP_HPP_PATH="${CMAKE_CURRENT_SOURCE_DIR}/banderwagon/cpp/multiexp.hpp"
+    )
+    add_test(NAME banderwagon_multiexp_doc_test COMMAND banderwagon_multiexp_doc_test)
 
     if(KINET_CRYPTO_ENABLE_METAL AND APPLE)
         find_program(XCRUN xcrun)
@@ -486,102 +565,141 @@ if(CRYPTO_BUILD_TESTS)
             set_property(TEST ripemd160_metal_test PROPERTY
                 ENVIRONMENT "KINET_CRYPTO_RIPEMD160_METALLIB=${_rmd_lib}")
 
-            # v0.65 pedersen vector commitment: pedersen.metal + Go-oracle KAT
-            # determinism test (M=8, N=256, 100 random rounds, byte-equal vs
-            # the Go canonical at github.com/kinet-labs/crypto/pedersen).
-            set(_ped_metal ${CMAKE_CURRENT_SOURCE_DIR}/pedersen/gpu/metal/pedersen.metal)
-            set(_ped_air   ${CMAKE_CURRENT_BINARY_DIR}/pedersen.air)
-            set(_ped_lib   ${CMAKE_CURRENT_BINARY_DIR}/kinet_crypto_pedersen.metallib)
-            add_custom_command(
-                OUTPUT ${_ped_air}
-                COMMAND ${XCRUN} -sdk macosx metal -c ${_ped_metal} -o ${_ped_air}
-                DEPENDS ${_ped_metal})
-            add_custom_command(
-                OUTPUT ${_ped_lib}
-                COMMAND ${XCRUN} -sdk macosx metallib ${_ped_air} -o ${_ped_lib}
-                DEPENDS ${_ped_air})
-            add_custom_target(pedersen_metallib ALL DEPENDS ${_ped_lib})
+            # Banderwagon Metal kernel. The .metal kernel #include's
+            # banderwagon_const.metalh emitted by the unified codegen
+            # (banderwagon_gen_gpu_constants -- registered below); we stage
+            # the .metal next to the header for the metal compiler.
+            set(_bw_metal_src ${CMAKE_CURRENT_SOURCE_DIR}/banderwagon/gpu/metal/banderwagon.metal)
+            set(_bw_metal_staged ${CMAKE_CURRENT_BINARY_DIR}/banderwagon.metal)
+            set(_bw_air ${CMAKE_CURRENT_BINARY_DIR}/banderwagon.air)
+            set(_bw_lib ${CMAKE_CURRENT_BINARY_DIR}/kinet_crypto_banderwagon.metallib)
 
-            # Generate the deterministic KAT fixture via the Go reference at
-            # pedersen/test/tools/metal_kat/main.go.  The test self-skips when
-            # KINET_CRYPTO_PEDERSEN_KAT is unset, so hosts without Go on PATH
-            # still build the test.
-            find_program(GO_EXECUTABLE NAMES go)
-            set(_ped_kat ${CMAKE_CURRENT_BINARY_DIR}/pedersen_metal.kat)
-            if(GO_EXECUTABLE)
-                add_custom_command(
-                    OUTPUT ${_ped_kat}
-                    COMMAND ${GO_EXECUTABLE} run .
-                        -out ${_ped_kat}
-                    WORKING_DIRECTORY
-                        ${CMAKE_CURRENT_SOURCE_DIR}/pedersen/test/tools/metal_kat
-                    DEPENDS
-                        ${CMAKE_CURRENT_SOURCE_DIR}/pedersen/test/tools/metal_kat/main.go
-                    COMMENT "Generating Pedersen Metal KAT fixture")
-                add_custom_target(pedersen_metal_kat ALL DEPENDS ${_ped_kat})
-            endif()
+            add_custom_command(
+                OUTPUT ${_bw_metal_staged}
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${_bw_metal_src} ${_bw_metal_staged}
+                DEPENDS ${_bw_metal_src})
 
-            add_executable(pedersen_metal_determinism_test
-                pedersen/test/pedersen_metal_determinism_test.mm)
-            set_target_properties(pedersen_metal_determinism_test PROPERTIES
+            add_custom_command(
+                OUTPUT ${_bw_air}
+                COMMAND ${XCRUN} -sdk macosx metal -c ${_bw_metal_staged} -o ${_bw_air}
+                DEPENDS ${_bw_metal_staged}
+                        ${CMAKE_CURRENT_BINARY_DIR}/banderwagon_const.metalh)
+            add_custom_command(
+                OUTPUT ${_bw_lib}
+                COMMAND ${XCRUN} -sdk macosx metallib ${_bw_air} -o ${_bw_lib}
+                DEPENDS ${_bw_air})
+            add_custom_target(banderwagon_metallib ALL DEPENDS ${_bw_lib})
+
+            add_executable(banderwagon_metal_determinism_test
+                banderwagon/test/banderwagon_metal_determinism_test.mm)
+            target_link_libraries(banderwagon_metal_determinism_test PRIVATE
+                banderwagon_cpu banderwagon_metal)
+            target_include_directories(banderwagon_metal_determinism_test PRIVATE
+                ${CMAKE_CURRENT_SOURCE_DIR}/banderwagon/cpp
+                ${CMAKE_CURRENT_SOURCE_DIR}/banderwagon/gpu/metal)
+            set_target_properties(banderwagon_metal_determinism_test PROPERTIES
                 COMPILE_FLAGS "-fobjc-arc")
-            target_link_libraries(pedersen_metal_determinism_test PRIVATE
-                pedersen_metal)
-            target_include_directories(pedersen_metal_determinism_test PRIVATE
-                ${CMAKE_CURRENT_SOURCE_DIR}/pedersen/gpu/metal
-            )
-            add_dependencies(pedersen_metal_determinism_test pedersen_metallib)
-            if(GO_EXECUTABLE)
-                add_dependencies(pedersen_metal_determinism_test pedersen_metal_kat)
-                add_test(NAME pedersen_metal_determinism_test
-                         COMMAND pedersen_metal_determinism_test)
-                set_property(TEST pedersen_metal_determinism_test PROPERTY
-                    ENVIRONMENT
-                    "KINET_CRYPTO_PEDERSEN_METALLIB=${_ped_lib};KINET_CRYPTO_PEDERSEN_KAT=${_ped_kat}")
-            else()
-                add_test(NAME pedersen_metal_determinism_test
-                         COMMAND pedersen_metal_determinism_test)
-                set_property(TEST pedersen_metal_determinism_test PROPERTY
-                    ENVIRONMENT "KINET_CRYPTO_PEDERSEN_METALLIB=${_ped_lib}")
-            endif()
+            target_link_libraries(bn254_metal_determinism_test PRIVATE
+                "-framework Metal" "-framework Foundation")
+            add_dependencies(bn254_metal_determinism_test bn254_metallib)
+            add_test(NAME bn254_metal_determinism_test
+                COMMAND bn254_metal_determinism_test)
+            set_property(TEST bn254_metal_determinism_test PROPERTY
+                ENVIRONMENT "KINET_CRYPTO_BN254_METALLIB=${_bn_lib}")
         endif()
     endif()
 
-    # v0.66 pedersen CUDA: byte-equal CPU-oracle determinism test (skipped on
-    # hosts without a CUDA runtime).  Reuses the Go-generated KAT fixture.
-    add_executable(pedersen_cuda_determinism_test
-        pedersen/test/pedersen_cuda_determinism_test.cpp)
-    target_link_libraries(pedersen_cuda_determinism_test PRIVATE pedersen_cuda)
-    target_include_directories(pedersen_cuda_determinism_test PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/pedersen/gpu/cuda)
-    if(KINET_CRYPTO_ENABLE_METAL AND APPLE AND GO_EXECUTABLE)
-        add_dependencies(pedersen_cuda_determinism_test pedersen_metal_kat)
-        add_test(NAME pedersen_cuda_determinism_test
-                 COMMAND pedersen_cuda_determinism_test)
-        set_property(TEST pedersen_cuda_determinism_test PROPERTY
-            ENVIRONMENT "KINET_CRYPTO_PEDERSEN_KAT=${_ped_kat}")
-    else()
-        add_test(NAME pedersen_cuda_determinism_test
-                 COMMAND pedersen_cuda_determinism_test)
-    endif()
+    # =========================================================================
+    # Banderwagon unified GPU constant codegen. Same internal accessors as the
+    # CPU body -- one tool emits .metalh, .cuh, .wgslh from a single source so
+    # drift between CPU and any GPU backend is structurally impossible.
+    # =========================================================================
+    add_executable(banderwagon_gen_gpu_constants
+        banderwagon/test/tools/gen_gpu_constants.cpp)
+    target_link_libraries(banderwagon_gen_gpu_constants PRIVATE banderwagon_cpu)
+    target_include_directories(banderwagon_gen_gpu_constants PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/banderwagon/cpp)
 
-    # v0.66 pedersen WebGPU/WGSL: byte-equal CPU-oracle determinism test
-    # (skipped on hosts without a wgpu runtime).
-    add_executable(pedersen_wgpu_determinism_test
-        pedersen/test/pedersen_wgpu_determinism_test.cpp)
-    target_link_libraries(pedersen_wgpu_determinism_test PRIVATE pedersen_wgpu)
-    target_include_directories(pedersen_wgpu_determinism_test PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/pedersen/gpu/wgsl)
-    if(KINET_CRYPTO_ENABLE_METAL AND APPLE AND GO_EXECUTABLE)
-        add_dependencies(pedersen_wgpu_determinism_test pedersen_metal_kat)
-        add_test(NAME pedersen_wgpu_determinism_test
-                 COMMAND pedersen_wgpu_determinism_test)
-        set_property(TEST pedersen_wgpu_determinism_test PROPERTY
-            ENVIRONMENT "KINET_CRYPTO_PEDERSEN_KAT=${_ped_kat}")
+    set(_bw_const_metalh ${CMAKE_CURRENT_BINARY_DIR}/banderwagon_const.metalh)
+    set(_bw_const_cuh    ${CMAKE_CURRENT_BINARY_DIR}/banderwagon_const.cuh)
+    set(_bw_const_wgslh  ${CMAKE_CURRENT_BINARY_DIR}/banderwagon_const.wgslh)
+    add_custom_command(
+        OUTPUT ${_bw_const_metalh} ${_bw_const_cuh} ${_bw_const_wgslh}
+        COMMAND banderwagon_gen_gpu_constants
+            ${_bw_const_metalh} ${_bw_const_cuh} ${_bw_const_wgslh}
+        DEPENDS banderwagon_gen_gpu_constants
+        COMMENT "Generating Banderwagon GPU constant headers (Metal/CUDA/WGSL)")
+    add_custom_target(banderwagon_gpu_constants ALL
+        DEPENDS ${_bw_const_metalh} ${_bw_const_cuh} ${_bw_const_wgslh})
+
+    # =========================================================================
+    # Banderwagon CUDA backend. nvcc-compiled when KINET_CRYPTO_ENABLE_CUDA=ON;
+    # otherwise the same .cu file compiles as plain C++ via the host polyfill.
+    # Either path runs the identical kernel body and yields byte-equal output
+    # to the CPU oracle by construction.
+    # =========================================================================
+    if(KINET_CRYPTO_ENABLE_CUDA)
+        add_library(banderwagon_cuda STATIC
+            banderwagon/gpu/cuda/banderwagon.cu)
+        set_source_files_properties(banderwagon/gpu/cuda/banderwagon.cu
+            PROPERTIES LANGUAGE CUDA)
+        set_target_properties(banderwagon_cuda PROPERTIES
+            POSITION_INDEPENDENT_CODE ON
+            CUDA_SEPARABLE_COMPILATION ON)
     else()
-        add_test(NAME pedersen_wgpu_determinism_test
-                 COMMAND pedersen_wgpu_determinism_test)
+        add_library(banderwagon_cuda STATIC
+            banderwagon/gpu/cuda/banderwagon.cu)
+        set_source_files_properties(banderwagon/gpu/cuda/banderwagon.cu
+            PROPERTIES LANGUAGE CXX)
+        target_compile_features(banderwagon_cuda PUBLIC cxx_std_20)
+        set_target_properties(banderwagon_cuda PROPERTIES
+            POSITION_INDEPENDENT_CODE ON)
     endif()
+    target_include_directories(banderwagon_cuda
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/banderwagon/gpu/cuda>
+        PRIVATE
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
+    add_dependencies(banderwagon_cuda banderwagon_gpu_constants)
+    add_library(kinet::banderwagon_cuda ALIAS banderwagon_cuda)
+
+    add_executable(banderwagon_cuda_determinism_test
+        banderwagon/test/banderwagon_cuda_determinism_test.cpp)
+    target_link_libraries(banderwagon_cuda_determinism_test
+        PRIVATE banderwagon_cpu banderwagon_cuda)
+    target_include_directories(banderwagon_cuda_determinism_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/banderwagon/cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/banderwagon/gpu/cuda)
+    add_test(NAME banderwagon_cuda_determinism_test
+        COMMAND banderwagon_cuda_determinism_test)
+
+    # =========================================================================
+    # Banderwagon WGSL backend. Host polyfill mirrors the .wgsl kernel byte-
+    # for-byte using only u32 ops (WGSL has no native u64). Byte-equal to the
+    # CPU oracle by construction; no wgpu runtime needed in CI.
+    # =========================================================================
+    add_library(banderwagon_wgsl STATIC
+        banderwagon/gpu/wgsl/banderwagon_driver.cpp)
+    target_include_directories(banderwagon_wgsl
+        PUBLIC
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/banderwagon/gpu/wgsl>
+        PRIVATE
+            $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>)
+    target_compile_features(banderwagon_wgsl PUBLIC cxx_std_20)
+    set_target_properties(banderwagon_wgsl PROPERTIES POSITION_INDEPENDENT_CODE ON)
+    add_dependencies(banderwagon_wgsl banderwagon_gpu_constants)
+    add_library(kinet::banderwagon_wgsl ALIAS banderwagon_wgsl)
+
+    add_executable(banderwagon_wgsl_determinism_test
+        banderwagon/test/banderwagon_wgsl_determinism_test.cpp)
+    target_link_libraries(banderwagon_wgsl_determinism_test
+        PRIVATE banderwagon_cpu banderwagon_wgsl)
+    target_include_directories(banderwagon_wgsl_determinism_test PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/banderwagon/cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/banderwagon/gpu/wgsl)
+    add_test(NAME banderwagon_wgsl_determinism_test
+        COMMAND banderwagon_wgsl_determinism_test)
 endif()
 
 message(STATUS "=================================================")

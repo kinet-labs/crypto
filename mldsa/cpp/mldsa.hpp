@@ -2,8 +2,9 @@
 // kinet-labs/crypto/mldsa - ML-DSA (FIPS 204) C++ surface
 // =============================================================================
 //
-// Thin wrappers over the vendored PQClean reference implementation
-// (cpp/pqclean/ml-dsa-{44,65,87}/, CC0 / public domain).
+// Thin wrappers over the PQClean reference implementation pulled via
+// FetchContent from kinet-labs/pqclean (crypto_sign/ml-dsa-{44,65,87}/clean,
+// CC0 / public domain).
 //
 // One function per (operation, parameter set). Parameter sets correspond to
 // FIPS 204 NIST levels:

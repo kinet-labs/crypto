@@ -14,7 +14,7 @@
 // Plus negative tests: tampered ciphertext and tampered AAD must both fail
 // tag verification.
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "../cpp/aead.hpp"
 
 #include <cstdio>

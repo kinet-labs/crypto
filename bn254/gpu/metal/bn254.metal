@@ -14,8 +14,6 @@
 //   - EIP-196, EIP-197 (Ethereum precompiles)
 //   - Zcash BN-254 specification
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #include <metal_stdlib>
 using namespace metal;
@@ -281,34 +279,58 @@ inline G1Projective g1_to_projective(thread const G1Affine& p) {
     return r;
 }
 
-inline G1Affine g1_to_affine(thread const G1Projective& p) {
-    G1Affine r;
-
-    if (fp256_is_zero(p.z)) {
-        r.infinity = true;
-        r.x = fp256_zero();
-        r.y = fp256_zero();
-        return r;
+// Constant-time conditional move on G1 projective points.
+// dst = mask ? src : dst, where mask is 0 (keep dst) or all-ones (take src).
+// Mirrors banderwagon::pt_cmov so both metal kernels share the same idiom.
+inline void pt_cmov(thread G1Projective& dst, thread const G1Projective& src, uint64_t mask) {
+    for (int i = 0; i < 4; i++) {
+        dst.x.limbs[i] = (dst.x.limbs[i] & ~mask) | (src.x.limbs[i] & mask);
+        dst.y.limbs[i] = (dst.y.limbs[i] & ~mask) | (src.y.limbs[i] & mask);
+        dst.z.limbs[i] = (dst.z.limbs[i] & ~mask) | (src.z.limbs[i] & mask);
     }
+}
 
-    // Real Jacobian -> affine via Fermat inversion:
-    //   X_aff = X_jac / Z^2,  Y_aff = Y_jac / Z^3
+// Constant-time conditional move on G1 affine points (including infinity flag).
+// dst = mask ? src : dst, where mask is 0 (keep dst) or all-ones (take src).
+inline void pt_cmov_affine(thread G1Affine& dst, thread const G1Affine& src, uint64_t mask) {
+    for (int i = 0; i < 4; i++) {
+        dst.x.limbs[i] = (dst.x.limbs[i] & ~mask) | (src.x.limbs[i] & mask);
+        dst.y.limbs[i] = (dst.y.limbs[i] & ~mask) | (src.y.limbs[i] & mask);
+    }
+    bool take_src = (mask != 0ULL);
+    dst.infinity = take_src ? src.infinity : dst.infinity;
+}
+
+// Branchless Jacobian -> affine. Always performs the inversion + Mont muls so
+// timing does not leak whether the input was the point at infinity. The
+// is-infinity case is selected via pt_cmov_affine after the unconditional work.
+inline G1Affine g1_to_affine(thread const G1Projective& p) {
+    // Unconditionally compute affine candidate. fp256_inverse(0) yields a
+    // garbage field element; we discard it via cmov below, so it never reaches
+    // the caller.
     Fp256 z_inv  = fp256_inverse(p.z);
     Fp256 z_inv2 = fp256_square(z_inv);
     Fp256 z_inv3 = fp256_mont_mul(z_inv2, z_inv);
-    r.infinity = false;
-    r.x = fp256_mont_mul(p.x, z_inv2);
-    r.y = fp256_mont_mul(p.y, z_inv3);
-    return r;
+
+    G1Affine candidate;
+    candidate.x = fp256_mont_mul(p.x, z_inv2);
+    candidate.y = fp256_mont_mul(p.y, z_inv3);
+    candidate.infinity = false;
+
+    // Identity selector: mask = 0xFFFF...FFFF if p.z == 0 else 0.
+    uint64_t z_zero = (uint64_t)(0ULL - (uint64_t)fp256_is_zero(p.z));
+
+    G1Affine result = candidate;
+    G1Affine identity = g1_identity();
+    pt_cmov_affine(result, identity, z_zero);
+    return result;
 }
 
-// Point doubling in projective coordinates
+// Branchless point doubling. Always evaluates the Jacobian doubling formulas
+// then cmoves the projective identity in if the input was the point at
+// infinity. Eliminates the secret-dependent branch on p.z.
 inline G1Projective g1_double(thread const G1Projective& p) {
-    if (fp256_is_zero(p.z)) {
-        return p; // Point at infinity
-    }
-
-    // Using Jacobian doubling formulas
+    // Using Jacobian doubling formulas (computed unconditionally)
     Fp256 a = fp256_square(p.x);                    // a = X^2
     Fp256 b = fp256_square(p.y);                    // b = Y^2
     Fp256 c = fp256_square(b);                      // c = Y^4
@@ -320,24 +342,18 @@ inline G1Projective g1_double(thread const G1Projective& p) {
     Fp256 e = fp256_add(fp256_double(a), a);        // e = 3*X^2
     Fp256 f = fp256_square(e);                      // f = (3*X^2)^2
 
-    G1Projective r;
-    r.x = fp256_sub(f, fp256_double(d));            // X' = f - 2*d
-    r.y = fp256_sub(fp256_mont_mul(e, fp256_sub(d, r.x)),
-                    fp256_double(fp256_double(fp256_double(c)))); // Y' = e*(d-X') - 8*c
-    r.z = fp256_double(fp256_mont_mul(p.y, p.z));   // Z' = 2*Y*Z
+    G1Projective dbl;
+    dbl.x = fp256_sub(f, fp256_double(d));          // X' = f - 2*d
+    dbl.y = fp256_sub(fp256_mont_mul(e, fp256_sub(d, dbl.x)),
+                     fp256_double(fp256_double(fp256_double(c)))); // Y' = e*(d-X') - 8*c
+    dbl.z = fp256_double(fp256_mont_mul(p.y, p.z)); // Z' = 2*Y*Z
 
-    return r;
-}
-
-// Constant-time conditional move on G1 projective points.
-// dst = mask ? src : dst, where mask is 0 (keep dst) or all-ones (take src).
-// Mirrors banderwagon::pt_cmov so both metal kernels share the same idiom.
-inline void pt_cmov(thread G1Projective& dst, thread const G1Projective& src, uint64_t mask) {
-    for (int i = 0; i < 4; i++) {
-        dst.x.limbs[i] = (dst.x.limbs[i] & ~mask) | (src.x.limbs[i] & mask);
-        dst.y.limbs[i] = (dst.y.limbs[i] & ~mask) | (src.y.limbs[i] & mask);
-        dst.z.limbs[i] = (dst.z.limbs[i] & ~mask) | (src.z.limbs[i] & mask);
-    }
+    // If p.z == 0 (input was the point at infinity), return the projective
+    // identity. cmov makes the dispatch constant-time.
+    uint64_t z_zero = (uint64_t)(0ULL - (uint64_t)fp256_is_zero(p.z));
+    G1Projective result = dbl;
+    pt_cmov(result, p, z_zero);
+    return result;
 }
 
 // Point addition in Jacobian coordinates -- branchless version.

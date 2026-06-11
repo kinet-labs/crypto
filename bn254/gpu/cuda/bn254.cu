@@ -419,6 +419,14 @@ __device__ G1Jac g1_scalar_mul(const G1Aff& p, const U256& k) {
 }
 
 // =============================================================================
+// Tower (Fp2/Fp6/Fp12) + G2 + optimal-ate pairing.
+// Header keeps the file pair (bn254.cu + bn254_pairing.cuh) under one TU so
+// register pressure of the existing G1 kernels is unchanged.
+// =============================================================================
+
+#include "bn254_pairing.cuh"
+
+// =============================================================================
 // SVDW map_to_curve (RFC 9380 §6.6.1)
 // =============================================================================
 
@@ -554,6 +562,52 @@ __global__ void k_fp_mul(const u64* a, const u64* b, u64* out, unsigned n) {
     U256 R = fp_mul(A, B);
     out[i*4+0] = R.limbs[0]; out[i*4+1] = R.limbs[1];
     out[i*4+2] = R.limbs[2]; out[i*4+3] = R.limbs[3];
+}
+
+// k_fp2_mul: out[i] = a[i] * b[i] in Fp2 (8 u64 each).
+__global__ void k_fp2_mul(const u64* a, const u64* b, u64* out, unsigned n) {
+    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    Fp2 A, B;
+    load_fp2_(A, a + i*8);
+    load_fp2_(B, b + i*8);
+    Fp2 R = fp2_mul_(A, B);
+    store_fp2_(out + i*8, R);
+}
+
+// k_fp12_mul: out[i] = a[i] * b[i] in Fp12 (48 u64 each).
+__global__ void k_fp12_mul(const u64* a, const u64* b, u64* out, unsigned n) {
+    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    Fp12_ A, B;
+    load_fp12_(A, a + i*48);
+    load_fp12_(B, b + i*48);
+    Fp12_ R = fp12_mul_(A, B);
+    store_fp12_(out + i*48, R);
+}
+
+// k_miller_iter: 100 cyclotomic-square iterations on a starting Fp12 to
+// stress-test the inner-loop squaring path. Matches the CPU oracle exactly.
+__global__ void k_miller_iter(const u64* in, u64* out, unsigned n) {
+    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    Fp12_ A; load_fp12_(A, in + i*48);
+    for (int k = 0; k < 100; ++k) A = cyclotomic_sqr_(A);
+    store_fp12_(out + i*48, A);
+}
+
+// k_pairing: out[i] = e(P[i], Q[i]) in Fp12 (Miller + final-exp).
+__global__ void k_pairing(const u64* P, const u64* Q, u64* out, unsigned n) {
+    unsigned i = blockIdx.x * blockDim.x + threadIdx.x;
+    if (i >= n) return;
+    G1Aff Pi;
+    Pi.x = u256_load(P + i*9 + 0);
+    Pi.y = u256_load(P + i*9 + 4);
+    Pi.inf = (int)P[i*9 + 8];
+    G2Aff Qi; load_g2_(Qi, Q + i*18);
+    Fp12_ m = miller_one_(Pi, Qi);
+    Fp12_ e = final_exp_(m);
+    store_fp12_(out + i*48, e);
 }
 
 }  // extern "C"

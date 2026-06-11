@@ -125,11 +125,16 @@ unset(_setup_bytes)
 # Both TUs are compiled into the per-algorithm umbrella libraries; the
 # `cevm_bls_kzg_canonical_cpu` adapter at cevm/lib/cevm_precompiles/
 # compiles only c_kzg.cpp (not c_kzg_blob.cpp) to honour the invariant.
+# NOTE (#246): cpp/kzg.cpp + cpp/kzg.hpp are not in tree; the verify_proof
+# pairing-equation body has not landed yet. c-abi/c_kzg.cpp depends on
+# `cevm::crypto::kzg_verify_proof` from that missing TU, so it is also
+# excluded from the build until the body is restored. The EL-side blob path
+# (cpp/kzg_blob.cpp + c-abi/c_kzg_blob.cpp) is self-contained and stays.
 kinet_add_algorithm(
     NAME    kzg
-    SOURCES cpp/kzg.cpp cpp/kzg_blob.cpp
-    HEADERS cpp/kzg.hpp cpp/kzg_blob.hpp
-    CABI    c-abi/c_kzg.cpp c-abi/c_kzg_blob.cpp
+    SOURCES cpp/kzg_blob.cpp
+    HEADERS cpp/kzg_blob.hpp
+    CABI    c-abi/c_kzg_blob.cpp
 )
 
 # kzg.cpp uses sha256 (canonical kinet-labs/crypto/sha256), intx, evmmax (deps),

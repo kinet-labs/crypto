@@ -21,7 +21,7 @@
 //   3. 1^x mod m = 1 mod m
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 
 #include <array>
 #include <cstdint>

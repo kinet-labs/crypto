@@ -6,7 +6,7 @@
 //   pk : 16384 bytes (256 * 2 * 32)
 //   sig:  8192 bytes (256 * 32)
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "lamport.hpp"
 
 extern "C" int lamport_keygen(const uint8_t seed[32], uint8_t* pk, uint8_t* sk) {

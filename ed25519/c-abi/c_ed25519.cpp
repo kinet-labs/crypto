@@ -9,7 +9,7 @@
 // once per sign call.
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "../cpp/ed25519.hpp"
 
 #include <cstdint>

@@ -21,7 +21,7 @@
 // =============================================================================
 
 #include "evm256.hpp"
-#include "kinet_crypto.h"
+#include "crypto.h"
 
 #include <array>
 #include <cstdio>

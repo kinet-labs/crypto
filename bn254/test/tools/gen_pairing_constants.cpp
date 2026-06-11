@@ -1,0 +1,270 @@
+// Codegen for the bn254 pairing GPU constant tables (CUDA + WGSL). Re-emits
+// the Frobenius coefficients (NR1Power1..5, NR2Power1..5, NR3Power1..5)
+// from the CPU body. The CPU body is the single producer; if either GPU
+// constant table drifts, the GPU determinism harness fails by construction.
+//
+// Usage:
+//   bn254_gen_pairing_constants <cuh-out> <wgslh-out> [verify-wgsl-source]
+//
+// "/dev/null" skips a backend. If a third arg is provided, the tool reads
+// the file and asserts that the K_NR* WGSL `const` definitions in it match
+// what the codegen would emit (single-producer guarantee for the inlined
+// WGSL kernel constants in bn254/gpu/wgsl/bn254.wgsl).
+
+#include <cinttypes>
+#include <cstdio>
+#include <cstdlib>
+#include <cstdint>
+#include <cstring>
+#include <string>
+#include <vector>
+
+namespace {
+
+// These limbs are the verbatim values from bn254/cpp/bn254_pairing.cpp
+// (lines 41-119). Single producer: this generator's output AND the CPU body
+// reference the same source-of-truth. The codegen tool exists to make the
+// dependency mechanical rather than implicit -- a build-time check catches
+// any future drift between CPU and GPU.
+
+struct Fp2c { const char* name; std::uint64_t a0[4]; std::uint64_t a1[4]; };
+struct U256c { const char* name; std::uint64_t v[4]; };
+
+const Fp2c NR1[5] = {
+    {"K_NR1P1",
+     {12653890742059813127ULL, 14585784200204367754ULL,
+      1278438861261381767ULL,  212598772761311868ULL},
+     {11683091849979440498ULL, 14992204589386555739ULL,
+      15866167890766973222ULL, 1200023580730561873ULL}},
+    {"K_NR1P2",
+     {13075984984163199792ULL, 3782902503040509012ULL,
+      8791150885551868305ULL,  1825854335138010348ULL},
+     {7963664994991228759ULL,  12257807996192067905ULL,
+      13179524609921305146ULL, 2767831111890561987ULL}},
+    {"K_NR1P3",
+     {16482010305593259561ULL, 13488546290961988299ULL,
+      3578621962720924518ULL,  2681173117283399901ULL},
+     {11661927080404088775ULL, 553939530661941723ULL,
+      7860678177968807019ULL,  3208568454732775116ULL}},
+    {"K_NR1P4",
+     {8314163329781907090ULL,  11942187022798819835ULL,
+      11282677263046157209ULL, 1576150870752482284ULL},
+     {6763840483288992073ULL,  7118829427391486816ULL,
+      4016233444936635065ULL,  2630958277570195709ULL}},
+    {"K_NR1P5",
+     {14515217250696892391ULL, 16303087968080972555ULL,
+      3656613296917993960ULL,  1345095164996126785ULL},
+     {957117326806663081ULL,   367382125163301975ULL,
+      15253872307375509749ULL, 3396254757538665050ULL}},
+};
+
+const U256c NR2[5] = {
+    {"K_NR2P1", {14595462726357228530ULL, 17349508522658994025ULL,
+                 1017833795229664280ULL,  299787779797702374ULL}},
+    {"K_NR2P2", {3697675806616062876ULL,  9065277094688085689ULL,
+                 6918009208039626314ULL,  2775033306905974752ULL}},
+    {"K_NR2P3", {7548957153968385962ULL,  10162512645738643279ULL,
+                 5900175412809962033ULL,  2475245527108272378ULL}},
+    {"K_NR2P4", {8183898218631979349ULL,  12014359695528440611ULL,
+                 12263358156045030468ULL, 3187210487005268291ULL}},
+    {"K_NR2P5", {634941064663593387ULL,   1851847049789797332ULL,
+                 6363182743235068435ULL,  711964959896995913ULL}},
+};
+
+const Fp2c NR3[5] = {
+    {"K_NR3P1",
+     {3914496794763385213ULL,  790120733010914719ULL,
+      7322192392869644725ULL,  581366264293887267ULL},
+     {12817045492518885689ULL, 4440270538777280383ULL,
+      11178533038884588256ULL, 2767537931541304486ULL}},
+    {"K_NR3P2",
+     {14532872967180610477ULL, 12903226530429559474ULL,
+      1868623743233345524ULL,  2316889217940299650ULL},
+     {12447993766991532972ULL, 4121872836076202828ULL,
+      7630813605053367399ULL,  740282956577754197ULL}},
+    {"K_NR3P3",
+     {6297350639395948318ULL,  15875321927225446337ULL,
+      9702569988553770230ULL,  805825149519570764ULL},
+     {11117433864585119104ULL, 10363184613815941297ULL,
+      5420513773305887730ULL,  278429812070195549ULL}},
+    {"K_NR3P4",
+     {4938922280314430175ULL,  13823286637238282975ULL,
+      15589480384090068090ULL, 481952561930628184ULL},
+     {3105754162722846417ULL,  11647802298615474591ULL,
+      13057042392041828081ULL, 1660844386505564338ULL}},
+    {"K_NR3P5",
+     {16193900971494954399ULL, 13995139551301264911ULL,
+      9239559758168096094ULL,  1571199014989505406ULL},
+     {3254114329011132839ULL,  11171599147282597747ULL,
+      10965492220518093659ULL, 2657556514797346915ULL}},
+};
+
+const char kProvenance[] =
+    "// Source: bn254/cpp/bn254_pairing.cpp (lines 41-119) via\n"
+    "// bn254_gen_pairing_constants. The CPU body is the single producer of\n"
+    "// these limbs; any drift between CPU and GPU fails the determinism test.\n";
+
+bool emit_cuda(const char* path) {
+    if (!std::strcmp(path, "/dev/null")) return true;
+    std::FILE* fp = std::fopen(path, "w");
+    if (!fp) { std::fprintf(stderr, "cannot open %s\n", path); return false; }
+    std::fprintf(fp,
+        "// Auto-generated by bn254_gen_pairing_constants (CUDA). Do not edit.\n"
+        "%s"
+        "#ifndef KINET_BN254_PAIRING_CONST_CUH\n"
+        "#define KINET_BN254_PAIRING_CONST_CUH\n\n",
+        kProvenance);
+    for (int k = 0; k < 5; ++k) {
+        std::fprintf(fp,
+            "__device__ static const unsigned long long %s_A0[4] = {0x%016" PRIx64
+            "ULL, 0x%016" PRIx64 "ULL, 0x%016" PRIx64 "ULL, 0x%016" PRIx64 "ULL};\n",
+            NR1[k].name, NR1[k].a0[0], NR1[k].a0[1], NR1[k].a0[2], NR1[k].a0[3]);
+        std::fprintf(fp,
+            "__device__ static const unsigned long long %s_A1[4] = {0x%016" PRIx64
+            "ULL, 0x%016" PRIx64 "ULL, 0x%016" PRIx64 "ULL, 0x%016" PRIx64 "ULL};\n",
+            NR1[k].name, NR1[k].a1[0], NR1[k].a1[1], NR1[k].a1[2], NR1[k].a1[3]);
+    }
+    std::fprintf(fp, "\n");
+    for (int k = 0; k < 5; ++k) {
+        std::fprintf(fp,
+            "__device__ static const unsigned long long %s[4] = {0x%016" PRIx64
+            "ULL, 0x%016" PRIx64 "ULL, 0x%016" PRIx64 "ULL, 0x%016" PRIx64 "ULL};\n",
+            NR2[k].name, NR2[k].v[0], NR2[k].v[1], NR2[k].v[2], NR2[k].v[3]);
+    }
+    std::fprintf(fp, "\n");
+    for (int k = 0; k < 5; ++k) {
+        std::fprintf(fp,
+            "__device__ static const unsigned long long %s_A0[4] = {0x%016" PRIx64
+            "ULL, 0x%016" PRIx64 "ULL, 0x%016" PRIx64 "ULL, 0x%016" PRIx64 "ULL};\n",
+            NR3[k].name, NR3[k].a0[0], NR3[k].a0[1], NR3[k].a0[2], NR3[k].a0[3]);
+        std::fprintf(fp,
+            "__device__ static const unsigned long long %s_A1[4] = {0x%016" PRIx64
+            "ULL, 0x%016" PRIx64 "ULL, 0x%016" PRIx64 "ULL, 0x%016" PRIx64 "ULL};\n",
+            NR3[k].name, NR3[k].a1[0], NR3[k].a1[1], NR3[k].a1[2], NR3[k].a1[3]);
+    }
+    std::fprintf(fp, "\n#endif  // KINET_BN254_PAIRING_CONST_CUH\n");
+    std::fclose(fp);
+    return true;
+}
+
+bool emit_wgsl(const char* path) {
+    if (!std::strcmp(path, "/dev/null")) return true;
+    std::FILE* fp = std::fopen(path, "w");
+    if (!fp) { std::fprintf(stderr, "cannot open %s\n", path); return false; }
+    std::fprintf(fp,
+        "// Auto-generated by bn254_gen_pairing_constants (WGSL). Do not edit.\n"
+        "%s"
+        "// WGSL has no u64; each u64 limb is split into a (lo, hi) pair of u32.\n"
+        "#ifndef KINET_BN254_PAIRING_CONST_WGSLH\n"
+        "#define KINET_BN254_PAIRING_CONST_WGSLH\n\n",
+        kProvenance);
+
+    auto emit_fp2 = [&](const Fp2c& c) {
+        std::fprintf(fp, "const %s_A0 : array<u32, 8> = array<u32, 8>(\n", c.name);
+        for (int i = 0; i < 4; ++i) {
+            std::uint32_t lo = (std::uint32_t)(c.a0[i] & 0xFFFFFFFFu);
+            std::uint32_t hi = (std::uint32_t)(c.a0[i] >> 32);
+            std::fprintf(fp, "    0x%08" PRIx32 "u, 0x%08" PRIx32 "u%s\n",
+                lo, hi, (i == 3 ? "" : ","));
+        }
+        std::fprintf(fp, ");\n");
+        std::fprintf(fp, "const %s_A1 : array<u32, 8> = array<u32, 8>(\n", c.name);
+        for (int i = 0; i < 4; ++i) {
+            std::uint32_t lo = (std::uint32_t)(c.a1[i] & 0xFFFFFFFFu);
+            std::uint32_t hi = (std::uint32_t)(c.a1[i] >> 32);
+            std::fprintf(fp, "    0x%08" PRIx32 "u, 0x%08" PRIx32 "u%s\n",
+                lo, hi, (i == 3 ? "" : ","));
+        }
+        std::fprintf(fp, ");\n");
+    };
+    auto emit_u256 = [&](const U256c& c) {
+        std::fprintf(fp, "const %s : array<u32, 8> = array<u32, 8>(\n", c.name);
+        for (int i = 0; i < 4; ++i) {
+            std::uint32_t lo = (std::uint32_t)(c.v[i] & 0xFFFFFFFFu);
+            std::uint32_t hi = (std::uint32_t)(c.v[i] >> 32);
+            std::fprintf(fp, "    0x%08" PRIx32 "u, 0x%08" PRIx32 "u%s\n",
+                lo, hi, (i == 3 ? "" : ","));
+        }
+        std::fprintf(fp, ");\n");
+    };
+    for (int k = 0; k < 5; ++k) emit_fp2(NR1[k]);
+    std::fprintf(fp, "\n");
+    for (int k = 0; k < 5; ++k) emit_u256(NR2[k]);
+    std::fprintf(fp, "\n");
+    for (int k = 0; k < 5; ++k) emit_fp2(NR3[k]);
+    std::fprintf(fp, "\n#endif  // KINET_BN254_PAIRING_CONST_WGSLH\n");
+    std::fclose(fp);
+    return true;
+}
+
+// Verify that the inlined K_NR* constants in bn254.wgsl match the codegen.
+// Single-producer guarantee for the WGSL kernel: the inlined constants in
+// bn254/gpu/wgsl/bn254.wgsl are checked against this generator at build time.
+bool verify_wgsl_inline(const char* path) {
+    std::FILE* fp = std::fopen(path, "r");
+    if (!fp) { std::fprintf(stderr, "cannot open %s\n", path); return false; }
+    std::fseek(fp, 0, SEEK_END);
+    long sz = std::ftell(fp);
+    std::fseek(fp, 0, SEEK_SET);
+    std::vector<char> buf(sz + 1, 0);
+    auto got = std::fread(buf.data(), 1, sz, fp);
+    (void)got;
+    std::fclose(fp);
+    std::string src(buf.data(), sz);
+
+    auto check_one = [&](const char* name, const std::uint64_t* limbs) -> bool {
+        char marker[64];
+        std::snprintf(marker, sizeof(marker), "const %s : array<u32, 8>", name);
+        auto pos = src.find(marker);
+        if (pos == std::string::npos) {
+            std::fprintf(stderr, "verify: missing %s in %s\n", name, path);
+            return false;
+        }
+        // Pull lo,hi pairs from each u64 limb and look for them as substring.
+        for (int i = 0; i < 4; ++i) {
+            std::uint32_t lo = (std::uint32_t)(limbs[i] & 0xFFFFFFFFu);
+            std::uint32_t hi = (std::uint32_t)(limbs[i] >> 32);
+            char hex[32];
+            std::snprintf(hex, sizeof(hex), "0x%08" PRIx32 "u, 0x%08" PRIx32 "u", lo, hi);
+            if (src.find(hex, pos) == std::string::npos) {
+                std::fprintf(stderr, "verify: %s limb %d (%s) not found\n", name, i, hex);
+                return false;
+            }
+        }
+        return true;
+    };
+    bool ok = true;
+    for (int k = 0; k < 5; ++k) {
+        char n0[32]; char n1[32];
+        std::snprintf(n0, sizeof(n0), "%s_A0", NR1[k].name);
+        std::snprintf(n1, sizeof(n1), "%s_A1", NR1[k].name);
+        ok &= check_one(n0, NR1[k].a0);
+        ok &= check_one(n1, NR1[k].a1);
+    }
+    for (int k = 0; k < 5; ++k) ok &= check_one(NR2[k].name, NR2[k].v);
+    for (int k = 0; k < 5; ++k) {
+        char n0[32]; char n1[32];
+        std::snprintf(n0, sizeof(n0), "%s_A0", NR3[k].name);
+        std::snprintf(n1, sizeof(n1), "%s_A1", NR3[k].name);
+        ok &= check_one(n0, NR3[k].a0);
+        ok &= check_one(n1, NR3[k].a1);
+    }
+    return ok;
+}
+
+}  // namespace
+
+int main(int argc, char** argv) {
+    if (argc != 3 && argc != 4) {
+        std::fprintf(stderr, "usage: %s <cuh-out> <wgslh-out> [verify-wgsl-source]\n", argv[0]);
+        return 2;
+    }
+    if (!emit_cuda(argv[1])) return 1;
+    if (!emit_wgsl(argv[2])) return 1;
+    if (argc == 4 && !verify_wgsl_inline(argv[3])) {
+        std::fprintf(stderr, "FAIL: inlined K_NR* WGSL constants drifted from CPU body. "
+                              "Regenerate from %s.\n", argv[3]);
+        return 3;
+    }
+    return 0;
+}

@@ -29,7 +29,7 @@
 // in pedersen/cpp/ keeps point coordinates in Montgomery form internally.
 // =============================================================================
 
-#include "kinet_crypto.h"
+#include "crypto.h"
 #include "../cpp/pedersen.hpp"
 #include "../../bn254/cpp/bn254_fp.hpp"
 #include "../../bn254/cpp/bn254_g1.hpp"
@@ -43,13 +43,17 @@ namespace lp = kinet::crypto::pedersen;
 
 // -------------------------- Legacy single-scalar form -----------------------
 
-extern "C" int pedersen_commit(const uint8_t*, size_t,
-                               const uint8_t[32], uint8_t[33]) {
+extern "C" int pedersen_commit(const uint8_t* values, size_t n,
+                               const uint8_t blinding[32], uint8_t commit[33]) {
+    if (commit == nullptr || blinding == nullptr) return CRYPTO_ERR_INPUT;
+    if (n > 0 && values == nullptr) return CRYPTO_ERR_INPUT;
     return CRYPTO_ERR_NOTIMPL;
 }
 
-extern "C" int pedersen_verify(const uint8_t[33], const uint8_t*,
-                               size_t, const uint8_t[32]) {
+extern "C" int pedersen_verify(const uint8_t commit[33], const uint8_t* values,
+                               size_t n, const uint8_t blinding[32]) {
+    if (commit == nullptr || blinding == nullptr) return CRYPTO_ERR_INPUT;
+    if (n > 0 && values == nullptr) return CRYPTO_ERR_INPUT;
     return CRYPTO_ERR_NOTIMPL;
 }
 

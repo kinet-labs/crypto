@@ -1,6 +1,6 @@
 # kinet-labs/crypto - canonical native + GPU crypto
 
-**Last Updated**: 2026-04-26
+**Last Updated**: 2026-04-28
 **Module**: `kinet-labs/crypto`
 **Role**: First-party CPU + GPU cryptographic primitives. Single source of
 truth for every algorithm consumed by Go (kinet-labs/crypto), Rust, C++, and
@@ -297,5 +297,25 @@ ABI-contract-asserted for malformed inputs):
 * `verify_blob_kzg_proof_batch`: 24 cases
 
 ---
+
+## External deps (kinet-labs-maintained forks, FetchContent)
+
+All external C++ dependencies live under the `kinet-labs/*` GitHub org and are
+pulled via CMake `FetchContent` from `deps/<name>/CMakeLists.txt`. NEVER track
+upstream HEAD; every entry pins a semver tag.
+
+| Dep                | Tag             | License           | Consumer                      |
+| ------------------ | --------------- | ----------------- | ----------------------------- |
+| intx               | v0.15.0         | Apache-2.0        | bn254, modexp                 |
+| evmmax             | v0.21.0         | Apache-2.0        | bn254, modexp                 |
+| pqclean            | v0.0.1-kinet-labs   | CC0-1.0           | slhdsa (mldsa/mlkem migrate later) |
+| ed25519-donna      | v0.1.0-kinet-labs   | Public Domain     | ed25519                       |
+| blake3-reference   | v1.5.0          | CC0/Apache-2.0    | blake3 (KAT oracle)           |
+| blst (test-only)   | v0.3.15         | Apache-2.0        | bls test-oracle               |
+
+Each fork carries `LICENSE-NOTICE.md` documenting upstream provenance, SPDX,
+and tag policy. Kinet-side modifications (e.g., the ed25519-donna SHA-512 shim)
+live in kinet-labs/crypto and are placed earlier on the include path so they win
+over upstream stubs of the same name. Forks themselves stay clean snapshots.
 
 *Symlinked as AGENTS.md, CLAUDE.md.*

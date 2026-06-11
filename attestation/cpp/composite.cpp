@@ -22,6 +22,20 @@
 //    298          io_level
 //
 // Total: 299 bytes. Hashed with keccak256.
+//
+// SAFETY CONTRACT: parser-only.
+//
+// This translation unit decodes TEE evidence layout and computes
+// measurement hashes. It does NOT verify cryptographic signatures or
+// trust chains. Calling this function on untrusted bytes without prior
+// chain verification is a security bug.
+//
+// Signature verification is performed by:
+//   - SEV-SNP: kinetd/cc/attest/sev.go via go-sev-guest + AMD KDS
+//   - TDX:     kinetd/cc/attest/tdx.go via go-tdx-guest + Intel PCS
+//   - NRAS:    kinetd/cc/attest/nras.go via NRAS JWT + JWKS cache
+//
+// See LP-137-ACTUAL-STATE.md §Attestation for the architectural seam.
 
 #include "kinet/crypto/attestation/composite.h"
 #include "kinet/crypto/keccak.h"

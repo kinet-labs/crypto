@@ -13,41 +13,54 @@
 
 #include "crypto.h"
 
-extern "C" int bls_keygen(const uint8_t /*seed*/[32], uint8_t /*sk*/[32]) {
+extern "C" int bls_keygen(const uint8_t seed[32], uint8_t sk[32]) {
+    if (seed == nullptr || sk == nullptr) return CRYPTO_ERR_INPUT;
     return CRYPTO_ERR_NOTIMPL;
 }
 
-extern "C" int bls_sk_to_pk(const uint8_t /*sk*/[32], uint8_t /*pk*/[48]) {
+extern "C" int bls_sk_to_pk(const uint8_t sk[32], uint8_t pk[48]) {
+    if (sk == nullptr || pk == nullptr) return CRYPTO_ERR_INPUT;
     return CRYPTO_ERR_NOTIMPL;
 }
 
-extern "C" int bls_sign(const uint8_t /*sk*/[32],
-                        const uint8_t* /*msg*/, size_t /*msg_len*/,
-                        uint8_t /*sig*/[96]) {
+extern "C" int bls_sign(const uint8_t sk[32],
+                        const uint8_t* msg, size_t msg_len,
+                        uint8_t sig[96]) {
+    if (sk == nullptr || sig == nullptr) return CRYPTO_ERR_INPUT;
+    if (msg_len > 0 && msg == nullptr) return CRYPTO_ERR_INPUT;
     return CRYPTO_ERR_NOTIMPL;
 }
 
-extern "C" int bls_verify(const uint8_t /*pk*/[48],
-                          const uint8_t* /*msg*/, size_t /*msg_len*/,
-                          const uint8_t /*sig*/[96]) {
+extern "C" int bls_verify(const uint8_t pk[48],
+                          const uint8_t* msg, size_t msg_len,
+                          const uint8_t sig[96]) {
+    if (pk == nullptr || sig == nullptr) return CRYPTO_ERR_INPUT;
+    if (msg_len > 0 && msg == nullptr) return CRYPTO_ERR_INPUT;
     return CRYPTO_ERR_NOTIMPL;
 }
 
-extern "C" int bls_aggregate_pubkeys(const uint8_t* /*pks*/, size_t /*n*/, uint8_t /*agg_pk*/[48]) {
+extern "C" int bls_aggregate_pubkeys(const uint8_t* pks, size_t n, uint8_t agg_pk[48]) {
+    if (agg_pk == nullptr) return CRYPTO_ERR_INPUT;
+    if (n > 0 && pks == nullptr) return CRYPTO_ERR_INPUT;
     return CRYPTO_ERR_NOTIMPL;
 }
 
-extern "C" int bls_aggregate_sigs(const uint8_t* /*sigs*/, size_t /*n*/, uint8_t /*agg_sig*/[96]) {
+extern "C" int bls_aggregate_sigs(const uint8_t* sigs, size_t n, uint8_t agg_sig[96]) {
+    if (agg_sig == nullptr) return CRYPTO_ERR_INPUT;
+    if (n > 0 && sigs == nullptr) return CRYPTO_ERR_INPUT;
     return CRYPTO_ERR_NOTIMPL;
 }
 
 // Note: the 3-arg bls_aggregate_verify(pks, sigs, n) entry lives in
 // c_bls_pairing.cpp (the WIRED pairing-product surface). The 5-arg form
-// declared in kinet_crypto.h is FastAggregateVerify-shaped and currently
+// declared in crypto.h is FastAggregateVerify-shaped and currently
 // has no production caller; if a Phase 3 caller appears, route it to
 // bls12_381_fast_aggregate_verify in c_bls_signature.cpp.
 
-extern "C" int bls_batch_verify(const uint8_t* /*pks*/, const uint8_t* /*msgs*/, size_t /*msg_len*/,
-                                const uint8_t* /*sigs*/, size_t /*n*/) {
+extern "C" int bls_batch_verify(const uint8_t* pks, const uint8_t* msgs, size_t msg_len,
+                                const uint8_t* sigs, size_t n) {
+    if (n == 0) return CRYPTO_ERR_NOTIMPL;
+    if (pks == nullptr || sigs == nullptr) return CRYPTO_ERR_INPUT;
+    if (msg_len > 0 && msgs == nullptr) return CRYPTO_ERR_INPUT;
     return CRYPTO_ERR_NOTIMPL;
 }

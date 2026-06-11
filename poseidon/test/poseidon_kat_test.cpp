@@ -10,7 +10,7 @@
 // endian fr.Element encoding).
 
 #include "poseidon.hpp"
-#include "kinet_crypto.h"
+#include "crypto.h"
 
 #include <cstdint>
 #include <cstdio>

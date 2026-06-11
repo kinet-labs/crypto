@@ -4,14 +4,14 @@ include(KinetAlgorithm)
 
 set(_blake3_root ${CMAKE_CURRENT_SOURCE_DIR})
 
-# Reference C as an OBJECT lib so it links once into blake3_cpu without
-# leaking into the public include path. C99 + portable-only dispatch.
+# Reference C from kinet-labs/blake3-reference (FetchContent, see deps/blake3-reference/)
+# as an OBJECT lib for the KAT byte-equality oracle. Portable-only dispatch.
 add_library(blake3_reference OBJECT
-    ${_blake3_root}/cpp/blake3-reference/blake3.c
-    ${_blake3_root}/cpp/blake3-reference/blake3_dispatch.c
-    ${_blake3_root}/cpp/blake3-reference/blake3_portable.c)
+    ${KINETCPP_BLAKE3_REFERENCE_SOURCE_DIR}/blake3.c
+    ${KINETCPP_BLAKE3_REFERENCE_SOURCE_DIR}/blake3_dispatch.c
+    ${KINETCPP_BLAKE3_REFERENCE_SOURCE_DIR}/blake3_portable.c)
 target_include_directories(blake3_reference PUBLIC
-    ${_blake3_root}/cpp/blake3-reference)
+    ${KINETCPP_BLAKE3_REFERENCE_SOURCE_DIR})
 target_compile_definitions(blake3_reference PRIVATE
     BLAKE3_NO_SSE2
     BLAKE3_NO_SSE41
