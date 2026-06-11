@@ -14,6 +14,8 @@
 //   - EIP-196, EIP-197 (Ethereum precompiles)
 //   - Zcash BN-254 specification
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <metal_stdlib>
 using namespace metal;
@@ -25,6 +27,15 @@ using namespace metal;
 // BN254 base field prime p (4 limbs, little-endian)
 constant uint64_t BN254_P[4] = {
     0x3C208C16D87CFD47,
+    0x97816A916871CA8D,
+    0xB85045B68181585D,
+    0x30644E72E131A029
+};
+
+// p - 2 used for Fermat inversion: z^{-1} = z^{p-2} mod p.
+// p_minus_2 = p - 2 (4 limbs, little-endian).
+constant uint64_t BN254_P_MINUS_2[4] = {
+    0x3C208C16D87CFD45,  // 0x3C208C16D87CFD47 - 2
     0x97816A916871CA8D,
     0xB85045B68181585D,
     0x30644E72E131A029
@@ -231,6 +242,25 @@ inline Fp256 fp256_double(thread const Fp256& a) {
     return fp256_add(a, a);
 }
 
+// Fermat's little theorem inversion: z^{-1} = z^{p-2} mod p.
+// Square-and-multiply over the bits of (p-2) LSB->MSB.  The exponent is
+// public + fixed, so we always perform 256 squarings + ~120 conditional
+// multiplies.  Sufficient for ZK fixed-exponent inversion on the GPU.
+inline Fp256 fp256_inverse(thread const Fp256& z) {
+    Fp256 result = fp256_one();
+    Fp256 base = z;
+    for (int i = 0; i < 4; i++) {
+        uint64_t e = BN254_P_MINUS_2[i];
+        for (int j = 0; j < 64; j++) {
+            if ((e >> j) & 1ULL) {
+                result = fp256_mont_mul(result, base);
+            }
+            base = fp256_square(base);
+        }
+    }
+    return result;
+}
+
 // =============================================================================
 // G1 Point Operations
 // =============================================================================
@@ -261,11 +291,14 @@ inline G1Affine g1_to_affine(thread const G1Projective& p) {
         return r;
     }
 
-    // Compute z^{-1} using Fermat's little theorem: z^{p-2} mod p
-    // Simplified: for now, we'd need full inversion - use projective throughout
+    // Real Jacobian -> affine via Fermat inversion:
+    //   X_aff = X_jac / Z^2,  Y_aff = Y_jac / Z^3
+    Fp256 z_inv  = fp256_inverse(p.z);
+    Fp256 z_inv2 = fp256_square(z_inv);
+    Fp256 z_inv3 = fp256_mont_mul(z_inv2, z_inv);
     r.infinity = false;
-    r.x = p.x; // Simplified - proper impl needs division by z^2
-    r.y = p.y; // Simplified - proper impl needs division by z^3
+    r.x = fp256_mont_mul(p.x, z_inv2);
+    r.y = fp256_mont_mul(p.y, z_inv3);
     return r;
 }
 
@@ -296,111 +329,147 @@ inline G1Projective g1_double(thread const G1Projective& p) {
     return r;
 }
 
-// Point addition in projective coordinates
-inline G1Projective g1_add(thread const G1Projective& p, thread const G1Projective& q) {
-    if (fp256_is_zero(p.z)) return q;
-    if (fp256_is_zero(q.z)) return p;
-
-    Fp256 z1z1 = fp256_square(p.z);                 // Z1^2
-    Fp256 z2z2 = fp256_square(q.z);                 // Z2^2
-    Fp256 u1 = fp256_mont_mul(p.x, z2z2);           // U1 = X1*Z2^2
-    Fp256 u2 = fp256_mont_mul(q.x, z1z1);           // U2 = X2*Z1^2
-    Fp256 s1 = fp256_mont_mul(fp256_mont_mul(p.y, q.z), z2z2); // S1 = Y1*Z2^3
-    Fp256 s2 = fp256_mont_mul(fp256_mont_mul(q.y, p.z), z1z1); // S2 = Y2*Z1^3
-
-    Fp256 h = fp256_sub(u2, u1);                    // H = U2 - U1
-    Fp256 r_val = fp256_sub(s2, s1);                // r = S2 - S1
-
-    // Check if same point (need to double)
-    if (fp256_is_zero(h)) {
-        if (fp256_is_zero(r_val)) {
-            return g1_double(p);
-        }
-        // Point at infinity
-        G1Projective inf;
-        inf.x = fp256_one();
-        inf.y = fp256_one();
-        inf.z = fp256_zero();
-        return inf;
+// Constant-time conditional move on G1 projective points.
+// dst = mask ? src : dst, where mask is 0 (keep dst) or all-ones (take src).
+// Mirrors banderwagon::pt_cmov so both metal kernels share the same idiom.
+inline void pt_cmov(thread G1Projective& dst, thread const G1Projective& src, uint64_t mask) {
+    for (int i = 0; i < 4; i++) {
+        dst.x.limbs[i] = (dst.x.limbs[i] & ~mask) | (src.x.limbs[i] & mask);
+        dst.y.limbs[i] = (dst.y.limbs[i] & ~mask) | (src.y.limbs[i] & mask);
+        dst.z.limbs[i] = (dst.z.limbs[i] & ~mask) | (src.z.limbs[i] & mask);
     }
-
-    Fp256 hh = fp256_square(h);                     // H^2
-    Fp256 hhh = fp256_mont_mul(h, hh);              // H^3
-    Fp256 v = fp256_mont_mul(u1, hh);               // V = U1*H^2
-
-    G1Projective result;
-    result.x = fp256_sub(fp256_sub(fp256_square(r_val), hhh), fp256_double(v));
-    result.y = fp256_sub(fp256_mont_mul(r_val, fp256_sub(v, result.x)),
-                         fp256_mont_mul(s1, hhh));
-    result.z = fp256_mont_mul(fp256_mont_mul(p.z, q.z), h);
-
-    return result;
 }
 
-// Scalar multiplication (double-and-add)
+// Point addition in Jacobian coordinates -- branchless version.
+// All conditional cases (P+0, 0+Q, P+P, P+(-P)) are computed unconditionally
+// then selected via pt_cmov so the dispatch is constant-time and the GPU
+// path is byte-equal to the CPU oracle for every input.
+inline G1Projective g1_add(thread const G1Projective& p, thread const G1Projective& q) {
+    Fp256 z1z1 = fp256_square(p.z);                              // Z1^2
+    Fp256 z2z2 = fp256_square(q.z);                              // Z2^2
+    Fp256 u1 = fp256_mont_mul(p.x, z2z2);                        // U1 = X1*Z2^2
+    Fp256 u2 = fp256_mont_mul(q.x, z1z1);                        // U2 = X2*Z1^2
+    Fp256 s1 = fp256_mont_mul(fp256_mont_mul(p.y, q.z), z2z2);   // S1 = Y1*Z2^3
+    Fp256 s2 = fp256_mont_mul(fp256_mont_mul(q.y, p.z), z1z1);   // S2 = Y2*Z1^3
+
+    Fp256 h = fp256_sub(u2, u1);                                 // H = U2 - U1
+    Fp256 r_val = fp256_sub(s2, s1);                             // r = S2 - S1
+
+    Fp256 hh = fp256_square(h);                                  // H^2
+    Fp256 hhh = fp256_mont_mul(h, hh);                           // H^3
+    Fp256 v = fp256_mont_mul(u1, hh);                            // V = U1*H^2
+
+    G1Projective add_result;
+    add_result.x = fp256_sub(fp256_sub(fp256_square(r_val), hhh), fp256_double(v));
+    add_result.y = fp256_sub(fp256_mont_mul(r_val, fp256_sub(v, add_result.x)),
+                             fp256_mont_mul(s1, hhh));
+    add_result.z = fp256_mont_mul(fp256_mont_mul(p.z, q.z), h);
+
+    G1Projective dbl_result = g1_double(p);
+
+    G1Projective inf;
+    inf.x = fp256_one();
+    inf.y = fp256_one();
+    inf.z = fp256_zero();
+
+    // Selectors. mask = 0xFFFF...FFFF if condition true else 0.
+    uint64_t p_zero  = (uint64_t)(0ULL - (uint64_t)fp256_is_zero(p.z));
+    uint64_t q_zero  = (uint64_t)(0ULL - (uint64_t)fp256_is_zero(q.z));
+    uint64_t h_zero  = (uint64_t)(0ULL - (uint64_t)fp256_is_zero(h));
+    uint64_t r_zero  = (uint64_t)(0ULL - (uint64_t)fp256_is_zero(r_val));
+
+    G1Projective out = add_result;
+    pt_cmov(out, dbl_result, h_zero & r_zero);    // P+P -> doubling
+    pt_cmov(out, inf,        h_zero & ~r_zero);   // P+(-P) -> infinity
+    pt_cmov(out, q,          p_zero);             // 0+Q -> Q
+    pt_cmov(out, p,          q_zero);             // P+0 -> P
+    return out;
+}
+
+// Constant-time scalar multiplication (Jacobian).
+// Mirrors banderwagon::pt_scalar_mul (banderwagon.metal:319-333):
+//   * iterate LSB->MSB across the 4-limb scalar (256 bits)
+//   * at each bit: compute acc + base unconditionally, cmov-select via mask
+//   * always double the base
+// Eliminates the secret-dependent `if (bit)` branch and yields output
+// byte-equal to the CPU oracle.
 inline G1Projective g1_scalar_mul(thread const G1Affine& p, thread const uint64_t scalar[4]) {
-    G1Projective result;
-    result.x = fp256_one();
-    result.y = fp256_one();
-    result.z = fp256_zero(); // Start at infinity
+    G1Projective acc;
+    acc.x = fp256_one();
+    acc.y = fp256_one();
+    acc.z = fp256_zero(); // identity
 
     G1Projective base = g1_to_projective(p);
 
-    for (int i = 3; i >= 0; i--) {
-        for (int j = 63; j >= 0; j--) {
-            result = g1_double(result);
-            if ((scalar[i] >> j) & 1) {
-                result = g1_add(result, base);
-            }
+    for (int i = 0; i < 4; i++) {
+        uint64_t limb = scalar[i];
+        for (int j = 0; j < 64; j++) {
+            uint64_t bit  = (limb >> j) & 1ULL;
+            uint64_t mask = 0ULL - bit;
+            G1Projective sum = g1_add(acc, base);
+            pt_cmov(acc, sum, mask);
+            base = g1_double(base);
         }
     }
-
-    return result;
+    return acc;
 }
 
 // =============================================================================
 // Pedersen Commitment Kernel
 // =============================================================================
 
+// Pedersen commitment kernel.
+//
+// ABI (changed 2026-04-28, LP-137-ORG-LAYOUT B3 fix):
+//   buffer(0)  values       : per-commitment scalar value v (4 limbs each, Mont form)
+//   buffer(1)  blinding     : per-commitment scalar blinding r (4 limbs each, Mont form)
+//   buffer(2)  G_xy         : 8 limbs of generator G (x||y), Mont form, supplied by host
+//   buffer(3)  H_xy         : 8 limbs of generator H (x||y), Mont form, supplied by host
+//   buffer(4)  commitments  : output (8 limbs each: x||y)
+//   buffer(5)  num_commitments
+//
+// Host MUST derive G,H independently via bn254 hash-to-curve with brand-neutral
+// DSTs ("KINET_PEDERSEN_G", "KINET_PEDERSEN_H") so the on-curve generators have no
+// known discrete-log relation. The previous `Hp = g1_double(Gp)` was discrete-
+// log-revealing (H = 2G) and broke the hiding property of the commitment.
 kernel void pedersen_commit(
-    device const uint64_t* values [[buffer(0)]],      // Values (4 limbs each)
-    device const uint64_t* blinding [[buffer(1)]],    // Blinding factors (4 limbs each)
-    device uint64_t* commitments [[buffer(2)]],       // Output commitments (8 limbs each: x, y)
-    constant uint32_t& num_commitments [[buffer(3)]],
+    device const uint64_t* values      [[buffer(0)]],
+    device const uint64_t* blinding    [[buffer(1)]],
+    device const uint64_t* G_xy        [[buffer(2)]],
+    device const uint64_t* H_xy        [[buffer(3)]],
+    device uint64_t*       commitments [[buffer(4)]],
+    constant uint32_t&     num_commitments [[buffer(5)]],
     uint index [[thread_position_in_grid]]
 ) {
     if (index >= num_commitments) return;
 
-    // Load value and blinding factor
     uint64_t v[4], r[4];
     for (int i = 0; i < 4; i++) {
         v[i] = values[index * 4 + i];
         r[i] = blinding[index * 4 + i];
     }
 
-    // Generator G
+    // Load host-supplied generators G and H (Mont form, x||y).
     G1Affine G;
+    G1Affine H;
     for (int i = 0; i < 4; i++) {
-        G.x.limbs[i] = BN254_G1_X[i];
-        G.y.limbs[i] = BN254_G1_Y[i];
+        G.x.limbs[i] = G_xy[i];
+        G.y.limbs[i] = G_xy[4 + i];
+        H.x.limbs[i] = H_xy[i];
+        H.y.limbs[i] = H_xy[4 + i];
     }
     G.infinity = false;
+    H.infinity = false;
 
-    // Generator H (use different point - simplified: G + G)
-    G1Projective Gp = g1_to_projective(G);
-    G1Projective Hp = g1_double(Gp);
-
-    // Compute C = v*G + r*H
+    // C = v*G + r*H using the constant-time ladder.
     G1Projective vG = g1_scalar_mul(G, v);
-    G1Affine H_affine = g1_to_affine(Hp);
-    G1Projective rH = g1_scalar_mul(H_affine, r);
-    G1Projective C = g1_add(vG, rH);
+    G1Projective rH = g1_scalar_mul(H, r);
+    G1Projective C  = g1_add(vG, rH);
     G1Affine C_affine = g1_to_affine(C);
 
-    // Output
     uint32_t out_offset = index * 8;
     for (int i = 0; i < 4; i++) {
-        commitments[out_offset + i] = C_affine.x.limbs[i];
+        commitments[out_offset + i]     = C_affine.x.limbs[i];
         commitments[out_offset + 4 + i] = C_affine.y.limbs[i];
     }
 }

@@ -9,6 +9,8 @@
 //   3. Matrix transpose
 //   4. N1 parallel row NTTs of size N2
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-2-Clause
 
 #include <cstdint>
 

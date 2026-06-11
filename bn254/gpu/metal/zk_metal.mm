@@ -2,8 +2,20 @@
 // Metal ZK Accelerator Implementation
 // =============================================================================
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #include "zk_metal.h"
+
+// First-party CPU bn254 -- used to derive Pedersen generators G, H once at
+// protocol init via hash-to-curve with brand-neutral DSTs.  The MTLBuffers
+// for each generator are then reused for every dispatch of pedersen_commit.
+#include "bn254_fp.hpp"
+#include "bn254_g1.hpp"
+#include "bn254_hash_to_curve.hpp"
+
+#include <cstdint>
+#include <cstring>
 
 #ifdef __APPLE__
 #import <Foundation/Foundation.h>
@@ -13,6 +25,21 @@
 namespace kinet {
 namespace crypto {
 namespace metal {
+
+namespace {
+
+// Pack a single bn254 G1 affine point (Montgomery form) into 8 LE uint64
+// limbs (x_lo..x_hi || y_lo..y_hi).  Matches the Metal kernel's expected
+// G_xy / H_xy layout in bn254.metal.
+void pack_g1_affine_le(const kinet::crypto::bn254::G1Affine& p,
+                       uint64_t out_xy[8]) {
+    for (int i = 0; i < 4; i++) {
+        out_xy[i]     = p.x.limbs[i];
+        out_xy[4 + i] = p.y.limbs[i];
+    }
+}
+
+}  // namespace
 
 // =============================================================================
 // MetalZKContext Implementation
@@ -24,6 +51,8 @@ MetalZKContext::MetalZKContext() : initialized_(false) {
     commandQueue_ = nil;
     cryptoLibrary_ = nil;
     zkLibrary_ = nil;
+    pedersenGBuffer_ = nil;
+    pedersenHBuffer_ = nil;
 #endif
 }
 
@@ -270,8 +299,54 @@ bool MetalZKContext::initBN254Pipelines() {
     pedersenCommitPipeline_ = createPipeline("pedersen_commit");
     bn254BatchAddPipeline_ = createPipeline("bn254_batch_add");
     bn254BatchMulPipeline_ = createPipeline("bn254_batch_scalar_mul");
-    
-    return pedersenCommitPipeline_ != nil;
+
+    // -----------------------------------------------------------------
+    // Pedersen generators G, H.
+    //
+    // Derived at protocol init via bn254 RFC-9380 hash-to-curve with
+    // brand-neutral DSTs that match kinet-labs/crypto/pedersen/pedersen.go:
+    //
+    //     G = HashToG1("seed_g", "KINET_PEDERSEN_G")
+    //     H = HashToG1("seed_h", "KINET_PEDERSEN_H")
+    //
+    // The seed ("seed_g" / "seed_h") is a fixed deterministic string;
+    // the DST enforces independence and binds to the Kinet brand.
+    // Identical DSTs on both sides (CPU oracle in pedersen.go, GPU kernel
+    // via these MTLBuffers) yield byte-equal generators.
+    //
+    // Once landed, these buffers are reused for every pedersenCommit
+    // dispatch -- there is no per-call cost.
+    // -----------------------------------------------------------------
+    {
+        using kinet::crypto::bn254::G1Affine;
+        using kinet::crypto::bn254::h2c::hash_to_curve_g1;
+
+        const uint8_t seed_g[] = {'s','e','e','d','_','g'};
+        const uint8_t seed_h[] = {'s','e','e','d','_','h'};
+        const uint8_t dst_g[]  = {'L','U','X','_','P','E','D','E','R','S','E','N','_','G'};
+        const uint8_t dst_h[]  = {'L','U','X','_','P','E','D','E','R','S','E','N','_','H'};
+
+        G1Affine G = hash_to_curve_g1({seed_g, sizeof(seed_g)},
+                                      {dst_g,  sizeof(dst_g)});
+        G1Affine H = hash_to_curve_g1({seed_h, sizeof(seed_h)},
+                                      {dst_h,  sizeof(dst_h)});
+
+        uint64_t G_xy[8];
+        uint64_t H_xy[8];
+        pack_g1_affine_le(G, G_xy);
+        pack_g1_affine_le(H, H_xy);
+
+        pedersenGBuffer_ = [device_ newBufferWithBytes:G_xy
+                                                length:sizeof(G_xy)
+                                               options:MTLResourceStorageModeShared];
+        pedersenHBuffer_ = [device_ newBufferWithBytes:H_xy
+                                                length:sizeof(H_xy)
+                                               options:MTLResourceStorageModeShared];
+    }
+
+    return pedersenCommitPipeline_ != nil
+        && pedersenGBuffer_ != nil
+        && pedersenHBuffer_ != nil;
 }
 
 bool MetalZKContext::initKZGPipelines() {
@@ -447,46 +522,51 @@ PedersenCommitment MetalZKContext::pedersenCommit(
     const Fr256& blindingFactor
 ) {
     PedersenCommitment result = {};
-    
+
 #ifdef __APPLE__
-    if (!initialized_ || !pedersenCommitPipeline_) {
+    if (!initialized_ || !pedersenCommitPipeline_
+        || !pedersenGBuffer_ || !pedersenHBuffer_) {
         return result;
     }
-    
+
     @autoreleasepool {
-        id<MTLBuffer> valueBuffer = [device_ newBufferWithBytes:value.limbs 
-                                                         length:32 
+        // Per-call buffers: scalars + output.  G/H are bound from the
+        // pre-computed context buffers (one MTLBuffer alloc total, not
+        // one per dispatch).
+        id<MTLBuffer> valueBuffer = [device_ newBufferWithBytes:value.limbs
+                                                         length:32
                                                         options:MTLResourceStorageModeShared];
-        
-        id<MTLBuffer> blindBuffer = [device_ newBufferWithBytes:blindingFactor.limbs 
-                                                         length:32 
+        id<MTLBuffer> blindBuffer = [device_ newBufferWithBytes:blindingFactor.limbs
+                                                         length:32
                                                         options:MTLResourceStorageModeShared];
-        
-        id<MTLBuffer> outputBuffer = [device_ newBufferWithLength:64 
+        id<MTLBuffer> outputBuffer = [device_ newBufferWithLength:64
                                                           options:MTLResourceStorageModeShared];
-        
         uint32_t count = 1;
-        id<MTLBuffer> countBuffer = [device_ newBufferWithBytes:&count 
-                                                         length:sizeof(uint32_t) 
+        id<MTLBuffer> countBuffer = [device_ newBufferWithBytes:&count
+                                                         length:sizeof(uint32_t)
                                                         options:MTLResourceStorageModeShared];
-        
+
         id<MTLCommandBuffer> commandBuffer = [commandQueue_ commandBuffer];
         id<MTLComputeCommandEncoder> encoder = [commandBuffer computeCommandEncoder];
-        
+
+        // ABI: (values, blinding, G_xy, H_xy, commitments, num) per
+        // pedersen_commit kernel signature in bn254.metal.
         [encoder setComputePipelineState:pedersenCommitPipeline_];
-        [encoder setBuffer:valueBuffer offset:0 atIndex:0];
-        [encoder setBuffer:blindBuffer offset:0 atIndex:1];
-        [encoder setBuffer:outputBuffer offset:0 atIndex:2];
-        [encoder setBuffer:countBuffer offset:0 atIndex:3];
-        
+        [encoder setBuffer:valueBuffer    offset:0 atIndex:0];
+        [encoder setBuffer:blindBuffer    offset:0 atIndex:1];
+        [encoder setBuffer:pedersenGBuffer_ offset:0 atIndex:2];
+        [encoder setBuffer:pedersenHBuffer_ offset:0 atIndex:3];
+        [encoder setBuffer:outputBuffer   offset:0 atIndex:4];
+        [encoder setBuffer:countBuffer    offset:0 atIndex:5];
+
         MTLSize gridSize = MTLSizeMake(1, 1, 1);
         MTLSize threadGroupSize = MTLSizeMake(1, 1, 1);
         [encoder dispatchThreads:gridSize threadsPerThreadgroup:threadGroupSize];
-        
+
         [encoder endEncoding];
         [commandBuffer commit];
         [commandBuffer waitUntilCompleted];
-        
+
         uint64_t* output = (uint64_t*)[outputBuffer contents];
         memcpy(result.point.x.limbs, output, 32);
         memcpy(result.point.y.limbs, output + 4, 32);
@@ -494,7 +574,7 @@ PedersenCommitment MetalZKContext::pedersenCommit(
         result.valid = true;
     }
 #endif
-    
+
     return result;
 }
 

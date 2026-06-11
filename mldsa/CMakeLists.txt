@@ -1,8 +1,84 @@
+# mldsa - ML-DSA / FIPS 204 (lattice-based digital signatures)
+#
+# CPU body: vendored PQClean reference (cpp/pqclean/ml-dsa-{44,65,87}/clean,
+# CC0 / public domain). Each parameter set is a standalone OBJECT library so
+# its compile-time include directory points only at its own headers; this
+# avoids params.h cross-talk between the three sets.
 include(KinetAlgorithm)
+
+set(_mldsa_root ${CMAKE_CURRENT_SOURCE_DIR})
+
+# Common dependency: fips202 (SHAKE for the FIPS 204 hash chain). Each
+# per-set OBJECT lib carries its own copy and is fully self-contained except
+# for the randombytes hook -- which the linker resolves separately so that KAT
+# tests can swap a deterministic AES-CTR DRBG (cpp/pqclean_kat/nistkatrng.c)
+# in place of the production getentropy backend.
+set(_mldsa_common_srcs
+    ${_mldsa_root}/cpp/pqclean/common/fips202.c)
+
+# Per-parameter-set OBJECT libraries (no randombytes -- linked separately).
+foreach(_set 44 65 87)
+    set(_dir ${_mldsa_root}/cpp/pqclean/ml-dsa-${_set})
+    file(GLOB _srcs ${_dir}/*.c)
+    add_library(mldsa_pqclean_${_set} OBJECT ${_srcs} ${_mldsa_common_srcs})
+    target_include_directories(mldsa_pqclean_${_set} PRIVATE
+        ${_dir}
+        ${_mldsa_root}/cpp/pqclean/common)
+    set_target_properties(mldsa_pqclean_${_set} PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+        C_STANDARD 99)
+endforeach()
+
+# Production randombytes (getentropy backend). Built as an OBJECT library
+# kept SEPARATE from mldsa_cpu so that the KAT test executable can swap a
+# deterministic AES-CTR DRBG (pqclean_kat/) in place of getentropy.
+# Production callers link both mldsa_cpu AND mldsa_pqclean_rb (wired through
+# the umbrella `mldsa` static lib via target_sources below).
+add_library(mldsa_pqclean_rb OBJECT
+    ${_mldsa_root}/cpp/pqclean/common/randombytes.c)
+target_include_directories(mldsa_pqclean_rb PRIVATE
+    ${_mldsa_root}/cpp/pqclean/common)
+set_target_properties(mldsa_pqclean_rb PROPERTIES
+    POSITION_INDEPENDENT_CODE ON
+    C_STANDARD 99)
+
 kinet_add_algorithm(
-    NAME mldsa
-    SOURCES c-abi/c_mldsa.cpp
+    NAME    mldsa
+    SOURCES cpp/mldsa.cpp c-abi/c_mldsa.cpp
+    HEADERS cpp/mldsa.hpp
     CABI    c-abi/c_mldsa.cpp
-    METAL_DRIVER gpu/metal/mldsa_driver.mm
-    METAL_HEADERS gpu/metal/mldsa_driver.h
 )
+
+# Pull the three per-set PQClean OBJECT libs into mldsa_cpu (the body that
+# tests link against). The production randombytes backend is bundled into the
+# umbrella `mldsa` static lib only -- KAT tests link mldsa_cpu without it
+# and pull a deterministic AES-CTR DRBG from pqclean_kat instead.
+target_sources(mldsa_cpu PRIVATE
+    $<TARGET_OBJECTS:mldsa_pqclean_44>
+    $<TARGET_OBJECTS:mldsa_pqclean_65>
+    $<TARGET_OBJECTS:mldsa_pqclean_87>)
+target_sources(mldsa PRIVATE
+    $<TARGET_OBJECTS:mldsa_pqclean_rb>)
+
+target_include_directories(mldsa_cpu PRIVATE
+    ${_mldsa_root}/cpp
+    ${_mldsa_root}/cpp/pqclean/common)
+
+# Batched ML-DSA verify Metal driver (one thread per signature). The Metal
+# verify orchestrator itself emits CRYPTO_ERR_NOTIMPL until a full FIPS-204
+# verify port is byte-equal to the CPU body. The CPU body (this archive) is
+# now real PQClean and ships byte-equal NIST-compliant verify.
+if(APPLE AND KINET_CRYPTO_ENABLE_METAL AND
+   EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/metal/mldsa_batch_driver.mm)
+    add_library(mldsa_batch_metal STATIC
+        gpu/metal/mldsa_batch_driver.mm)
+    target_compile_features(mldsa_batch_metal PUBLIC cxx_std_20)
+    set_target_properties(mldsa_batch_metal PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+        COMPILE_FLAGS "-fobjc-arc"
+    )
+    target_link_libraries(mldsa_batch_metal PUBLIC
+        "-framework Metal"
+        "-framework Foundation"
+    )
+endif()

@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Tests for composite attestation_root computation and baseline verification.
 
 #include "kinet/crypto/attestation/composite.h"
@@ -143,7 +140,7 @@ int main() {
     }
 
     // -------------------------------------------------------------------
-    // 4. Baseline accept on full match
+    // 4. Baseline accept on full match (all require_* flags set)
     // -------------------------------------------------------------------
     {
         auto a = make_canonical_attestation();
@@ -152,22 +149,38 @@ int main() {
         std::memcpy(b.expected_crypto_kernel_hash,       a.crypto_kernel_hash,       32);
         std::memcpy(b.expected_precompile_binary_hash,   a.precompile_binary_hash,   32);
         std::memcpy(b.expected_policy_root,              a.policy_root,              32);
-        b.min_io_level = ATTESTATION_IO_CPU_GPU_COMPOSITE;
+        b.min_io_level          = ATTESTATION_IO_CPU_GPU_COMPOSITE;
         b.required_cpu_tee_kind = ATTESTATION_CPU_TEE_SEV_SNP;
         b.required_gpu_tee_kind = ATTESTATION_GPU_TEE_NV_H100_CC;
+        b.require_quasar_gpu_binary_hash = 1;
+        b.require_crypto_kernel_hash     = 1;
+        b.require_precompile_binary_hash = 1;
+        b.require_policy_root            = 1;
+        b.require_cpu_tee_kind           = 1;
+        b.require_gpu_tee_kind           = 1;
 
         check_ok("baseline.accept_full_match",
                  attestation_verify_baseline(&a, &b));
     }
 
     // -------------------------------------------------------------------
-    // 5. Baseline accept with wildcards (zero hashes / NONE kinds)
+    // 5. Baseline accept with all require_* flags off (skip-everything).
+    //    Even non-matching observed values must not affect the verdict.
     // -------------------------------------------------------------------
     {
         auto a = make_canonical_attestation();
-        AttestationBaseline b{};  // zero-init = wildcards everywhere
+        AttestationBaseline b{};  // zero-init: all require_* = 0
+        // Populate expected_* with non-matching values to prove they are
+        // skipped because require_*=0.
+        fill_hash(b.expected_quasar_gpu_binary_hash, 0xAA);
+        fill_hash(b.expected_crypto_kernel_hash,     0xBB);
+        fill_hash(b.expected_precompile_binary_hash, 0xCC);
+        fill_hash(b.expected_policy_root,            0xDD);
+        b.required_cpu_tee_kind = ATTESTATION_CPU_TEE_TDX;        // != a
+        b.required_gpu_tee_kind = ATTESTATION_GPU_TEE_AMD_MI300_CC; // != a
         b.min_io_level = ATTESTATION_IO_NONE;
-        check_ok("baseline.wildcard_accept",
+
+        check_ok("baseline.skip_all_accept",
                  attestation_verify_baseline(&a, &b));
     }
 
@@ -178,6 +191,7 @@ int main() {
         auto a = make_canonical_attestation();
         AttestationBaseline b{};
         fill_hash(b.expected_quasar_gpu_binary_hash, 0xAA);  // != 0x40 seed
+        b.require_quasar_gpu_binary_hash = 1;
         check_err("baseline.reject_quasar_binary",
                   attestation_verify_baseline(&a, &b),
                   ATTESTATION_ERR_VERIFY);
@@ -190,6 +204,7 @@ int main() {
         auto a = make_canonical_attestation();
         AttestationBaseline b{};
         fill_hash(b.expected_crypto_kernel_hash, 0xBB);
+        b.require_crypto_kernel_hash = 1;
         check_err("baseline.reject_crypto_kernel",
                   attestation_verify_baseline(&a, &b),
                   ATTESTATION_ERR_VERIFY);
@@ -202,6 +217,7 @@ int main() {
         auto a = make_canonical_attestation();
         AttestationBaseline b{};
         fill_hash(b.expected_policy_root, 0xCC);
+        b.require_policy_root = 1;
         check_err("baseline.reject_policy_root",
                   attestation_verify_baseline(&a, &b),
                   ATTESTATION_ERR_VERIFY);
@@ -227,6 +243,7 @@ int main() {
         auto a = make_canonical_attestation();
         AttestationBaseline b{};
         b.required_cpu_tee_kind = ATTESTATION_CPU_TEE_TDX;  // a is SEV-SNP
+        b.require_cpu_tee_kind = 1;
         check_err("baseline.reject_cpu_kind",
                   attestation_verify_baseline(&a, &b),
                   ATTESTATION_ERR_VERIFY);
@@ -239,9 +256,60 @@ int main() {
         auto a = make_canonical_attestation();
         AttestationBaseline b{};
         b.required_gpu_tee_kind = ATTESTATION_GPU_TEE_AMD_MI300_CC;  // a is NV
+        b.require_gpu_tee_kind = 1;
         check_err("baseline.reject_gpu_kind",
                   attestation_verify_baseline(&a, &b),
                   ATTESTATION_ERR_VERIFY);
+    }
+
+    // -------------------------------------------------------------------
+    // 11b. require_*=true with zero-expected hash -> rejected as input.
+    //      Regression test for the wildcard-on-zero loophole.
+    // -------------------------------------------------------------------
+    {
+        auto a = make_canonical_attestation();
+        AttestationBaseline b{};
+        b.require_quasar_gpu_binary_hash = 1;  // expected_* left zero
+        check_err("baseline.reject_required_zero_quasar",
+                  attestation_verify_baseline(&a, &b),
+                  ATTESTATION_ERR_INPUT);
+    }
+    {
+        auto a = make_canonical_attestation();
+        AttestationBaseline b{};
+        b.require_crypto_kernel_hash = 1;
+        check_err("baseline.reject_required_zero_crypto_kernel",
+                  attestation_verify_baseline(&a, &b),
+                  ATTESTATION_ERR_INPUT);
+    }
+    {
+        auto a = make_canonical_attestation();
+        AttestationBaseline b{};
+        b.require_precompile_binary_hash = 1;
+        check_err("baseline.reject_required_zero_precompile",
+                  attestation_verify_baseline(&a, &b),
+                  ATTESTATION_ERR_INPUT);
+    }
+    {
+        auto a = make_canonical_attestation();
+        AttestationBaseline b{};
+        b.require_policy_root = 1;
+        check_err("baseline.reject_required_zero_policy_root",
+                  attestation_verify_baseline(&a, &b),
+                  ATTESTATION_ERR_INPUT);
+    }
+
+    // -------------------------------------------------------------------
+    // 11c. require_*=false skips even when observed != expected.
+    // -------------------------------------------------------------------
+    {
+        auto a = make_canonical_attestation();
+        AttestationBaseline b{};
+        // require_* all 0 by default; populate non-matching expected_*.
+        fill_hash(b.expected_quasar_gpu_binary_hash, 0xAA);
+        fill_hash(b.expected_crypto_kernel_hash,     0xBB);
+        check_ok("baseline.skip_nonmatch_quasar",
+                 attestation_verify_baseline(&a, &b));
     }
 
     // -------------------------------------------------------------------

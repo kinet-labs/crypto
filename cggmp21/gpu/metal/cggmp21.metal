@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 /// @file cggmp21.metal
 /// Metal compute shader for CGGMP21 threshold ECDSA operations.
 ///

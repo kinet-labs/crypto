@@ -11,10 +11,10 @@
 //   - Batch signature verification
 //   - Parallel SHAKE/SHA2 operations
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
-#ifndef KINET_METAL_SLHDSA_H
-#define KINET_METAL_SLHDSA_H
-
+#pragma once
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -247,5 +247,3 @@ int metal_slhdsa_batch_verify(
 #ifdef __cplusplus
 }
 #endif
-
-#endif // KINET_METAL_SLHDSA_H

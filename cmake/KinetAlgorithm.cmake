@@ -54,7 +54,7 @@ function(kinet_add_algorithm)
 
     # ---- Optional Metal driver (.mm + .h) ------------------------------------
     set(_metal_target "")
-    if(APPLE AND KINET_CRYPTO_ENABLE_METAL AND LA_METAL_DRIVER)
+    if(APPLE AND CRYPTO_ENABLE_METAL AND LA_METAL_DRIVER)
         set(_metal_target "${LA_NAME}_metal")
         add_library(${_metal_target} STATIC ${LA_METAL_DRIVER})
         target_include_directories(${_metal_target}
@@ -77,7 +77,7 @@ function(kinet_add_algorithm)
 
     # ---- Optional CUDA driver -------------------------------------------------
     set(_cuda_target "")
-    if(KINET_CRYPTO_ENABLE_CUDA AND LA_CUDA_SOURCES)
+    if(CRYPTO_ENABLE_CUDA AND LA_CUDA_SOURCES)
         set(_cuda_target "${LA_NAME}_cuda")
         add_library(${_cuda_target} STATIC ${LA_CUDA_SOURCES})
         target_include_directories(${_cuda_target}
@@ -95,7 +95,7 @@ function(kinet_add_algorithm)
 
     # ---- Optional WGSL driver -------------------------------------------------
     set(_wgsl_target "")
-    if(KINET_CRYPTO_ENABLE_WGSL AND LA_WGSL_DRIVER)
+    if(CRYPTO_ENABLE_WGSL AND LA_WGSL_DRIVER)
         set(_wgsl_target "${LA_NAME}_wgsl")
         add_library(${_wgsl_target} STATIC ${LA_WGSL_DRIVER})
         target_include_directories(${_wgsl_target}

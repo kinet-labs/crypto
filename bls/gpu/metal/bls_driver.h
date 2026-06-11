@@ -5,10 +5,10 @@
 // C++ interface for dispatching BLS12-381 operations to Metal compute shaders.
 // Provides batch operations for signature verification and key aggregation.
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
-#ifndef KINET_METAL_BLS_H
-#define KINET_METAL_BLS_H
-
+#pragma once
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -244,5 +244,3 @@ int metal_bls_g1_compress(uint8_t* compressed, const G1Affine* point);
 #ifdef __cplusplus
 }
 #endif
-
-#endif // KINET_METAL_BLS_H

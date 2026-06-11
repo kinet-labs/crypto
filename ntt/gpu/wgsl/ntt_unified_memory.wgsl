@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Unified memory NTT kernels in WGSL, ported from ntt_unified_memory.metal.
 // Zero-copy NTT with branch-free modular arithmetic.
 // u64 emulated as vec2<u32>(lo, hi).

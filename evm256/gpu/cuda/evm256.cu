@@ -2,8 +2,6 @@
 // uint256 operations using 4x uint64 limbs (little-endian)
 // Matches evm256.metal output byte-for-byte
 //
-// Copyright (C) 2024-2026 Kinet Partners Limited
-// SPDX-License-Identifier: BSD-3-Clause
 
 #include <cstdint>
 

@@ -5,6 +5,8 @@
 // C++ wrapper for Metal compute shaders for ZK cryptographic operations.
 // Provides GPU-accelerated Pedersen, Blake3, KZG, and BN254 operations.
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 
@@ -243,6 +245,13 @@ private:
     id<MTLComputePipelineState> pedersenCommitPipeline_;
     id<MTLComputePipelineState> bn254BatchAddPipeline_;
     id<MTLComputePipelineState> bn254BatchMulPipeline_;
+
+    // Pedersen generators G, H -- pre-computed once at init via bn254
+    // hash-to-curve with brand-neutral DSTs ("KINET_PEDERSEN_G",
+    // "KINET_PEDERSEN_H") so they have no known discrete-log relation.
+    // Each buffer carries 8 x uint64 (Mont-form x || Mont-form y).
+    id<MTLBuffer> pedersenGBuffer_;
+    id<MTLBuffer> pedersenHBuffer_;
     
     id<MTLComputePipelineState> kzgMsmPipeline_;
     id<MTLComputePipelineState> kzgFftPipeline_;

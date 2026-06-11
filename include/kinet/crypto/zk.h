@@ -16,10 +16,10 @@
 // - Below threshold: CPU (lower latency for small batches)
 // - Above threshold: GPU (higher throughput for large batches)
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
-#ifndef KINET_ZK_H
-#define KINET_ZK_H
-
+#pragma once
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -418,5 +418,3 @@ int zk_goldilocks_batch_mul(
 #ifdef __cplusplus
 }
 #endif
-
-#endif // KINET_ZK_H

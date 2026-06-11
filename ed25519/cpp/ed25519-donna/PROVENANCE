@@ -1,0 +1,48 @@
+ed25519-donna vendor manifest
+=============================
+
+Upstream:  https://github.com/floodyberry/ed25519-donna
+Pinned:    8757bd4cd209cb032853ece0ce413f122eef212c
+           (master HEAD as of 2026-04-27)
+License:   Public domain (or MIT where PD is not recognised). See LICENSE.
+
+Files vendored (verbatim, no modifications):
+  curve25519-donna-32bit.h
+  curve25519-donna-64bit.h
+  curve25519-donna-helpers.h
+  ed25519-donna-32bit-tables.h
+  ed25519-donna-64bit-tables.h
+  ed25519-donna-64bit-x86-32bit.h
+  ed25519-donna-64bit-x86.h
+  ed25519-donna-basepoint-table.h
+  ed25519-donna-batchverify.h
+  ed25519-donna-impl-base.h
+  ed25519-donna-portable-identify.h
+  ed25519-donna-portable.h
+  ed25519-donna.h
+  ed25519-hash.h
+  ed25519-randombytes.h
+  ed25519.c
+  ed25519.h
+  modm-donna-32bit.h
+  modm-donna-64bit.h
+
+Files NOT vendored (excluded by design):
+  curve25519-donna-sse2.h
+  ed25519-donna-32bit-sse2.h
+  ed25519-donna-64bit-sse2.h
+  ed25519-donna-impl-sse2.h            (SSE2 kept off; portable C is enough)
+  ed25519-hash-custom.h                (we ship our own at this path)
+  ed25519-randombytes-custom.h         (we ship our own at this path)
+  test.c, test-internals.c, fuzz/      (upstream tests; our KAT lives elsewhere)
+  regression.h, test-ticks.h, README.md
+
+Build configuration in kinet-labs/crypto/ed25519/CMakeLists.txt:
+  -DED25519_CUSTOMHASH      => use ed25519-hash-custom.h shim (pulls SHA-512
+                               from sha512_minimal.hpp, no OpenSSL).
+  -DED25519_CUSTOMRANDOM    => use ed25519-randombytes-custom.h shim (xorshift
+                               for batch_verify; deterministic and host-only).
+  -DED25519_NO_INLINE_ASM   => skip x86 inline-assembly choose-niels variant
+                               (works on Apple Silicon and any non-x86 CPU).
+  -DED25519_SUFFIX=_donna   => keep upstream symbols namespaced (_donna suffix)
+                               so the C-ABI shim can wrap them without clash.

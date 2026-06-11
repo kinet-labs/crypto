@@ -20,6 +20,8 @@
 //
 // See patent: PAT-FHE-010-four-step-ntt-metal.md
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: BSD-2-Clause
 // =============================================================================
 
 #include <metal_stdlib>

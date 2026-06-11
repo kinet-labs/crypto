@@ -1,6 +1,4 @@
-/* Copyright (c) 2024-2026 Kinet Industries Inc.
- * SPDX-License-Identifier: BSD-3-Clause-Eco
- *
+/*
  * Confidential-compute attestation primitives for kinet-labs/crypto.
  *
  *   * AMD SEV-SNP attestation report parser  -- 32-byte measurement extract
@@ -16,9 +14,7 @@
  *
  * Symbols are brand-neutral. The brand lives in the include path.
  */
-#ifndef KINET_CRYPTO_ATTESTATION_H
-#define KINET_CRYPTO_ATTESTATION_H
-
+#pragma once
 #include <stddef.h>
 #include <stdint.h>
 
@@ -26,7 +22,7 @@
 extern "C" {
 #endif
 
-/* Return codes (matches kinet_crypto.h). */
+/* Return codes (matches crypto.h). */
 #define ATTESTATION_OK          0
 #define ATTESTATION_ERR_INPUT  -1
 #define ATTESTATION_ERR_LENGTH -2
@@ -74,5 +70,3 @@ int attestation_parse_nv(
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif
-
-#endif /* KINET_CRYPTO_ATTESTATION_H */

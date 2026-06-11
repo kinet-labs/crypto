@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Composite confidential-compute attestation root.
 //
 // This file implements:
@@ -98,39 +95,58 @@ extern "C" int attestation_verify_baseline(
         return ATTESTATION_ERR_INPUT;
     }
 
-    // I/O level floor.
+    // I/O level floor (always enforced; set min_io_level = NONE to disable).
     if (a->io_level < b->min_io_level) {
         return ATTESTATION_ERR_VERIFY;
     }
 
-    // CPU TEE kind: NONE = wildcard.
-    if (b->required_cpu_tee_kind != ATTESTATION_CPU_TEE_NONE &&
-        a->cpu_tee_kind != b->required_cpu_tee_kind) {
-        return ATTESTATION_ERR_VERIFY;
+    // CPU TEE kind: enforced only when require_cpu_tee_kind is set.
+    if (b->require_cpu_tee_kind) {
+        if (a->cpu_tee_kind != b->required_cpu_tee_kind) {
+            return ATTESTATION_ERR_VERIFY;
+        }
     }
 
-    // GPU TEE kind: NONE = wildcard.
-    if (b->required_gpu_tee_kind != ATTESTATION_GPU_TEE_NONE &&
-        a->gpu_tee_kind != b->required_gpu_tee_kind) {
-        return ATTESTATION_ERR_VERIFY;
+    // GPU TEE kind: enforced only when require_gpu_tee_kind is set.
+    if (b->require_gpu_tee_kind) {
+        if (a->gpu_tee_kind != b->required_gpu_tee_kind) {
+            return ATTESTATION_ERR_VERIFY;
+        }
     }
 
-    // Hash baselines: all-zero = wildcard, otherwise exact match.
-    if (!is_zero(b->expected_quasar_gpu_binary_hash) &&
-        !eq32(a->quasar_gpu_binary_hash, b->expected_quasar_gpu_binary_hash)) {
-        return ATTESTATION_ERR_VERIFY;
+    // Hash baselines: explicit require_* flag controls enforcement. A zero
+    // expected hash with require_*=true is rejected (no implicit wildcard).
+    if (b->require_quasar_gpu_binary_hash) {
+        if (is_zero(b->expected_quasar_gpu_binary_hash)) {
+            return ATTESTATION_ERR_INPUT;
+        }
+        if (!eq32(a->quasar_gpu_binary_hash, b->expected_quasar_gpu_binary_hash)) {
+            return ATTESTATION_ERR_VERIFY;
+        }
     }
-    if (!is_zero(b->expected_crypto_kernel_hash) &&
-        !eq32(a->crypto_kernel_hash, b->expected_crypto_kernel_hash)) {
-        return ATTESTATION_ERR_VERIFY;
+    if (b->require_crypto_kernel_hash) {
+        if (is_zero(b->expected_crypto_kernel_hash)) {
+            return ATTESTATION_ERR_INPUT;
+        }
+        if (!eq32(a->crypto_kernel_hash, b->expected_crypto_kernel_hash)) {
+            return ATTESTATION_ERR_VERIFY;
+        }
     }
-    if (!is_zero(b->expected_precompile_binary_hash) &&
-        !eq32(a->precompile_binary_hash, b->expected_precompile_binary_hash)) {
-        return ATTESTATION_ERR_VERIFY;
+    if (b->require_precompile_binary_hash) {
+        if (is_zero(b->expected_precompile_binary_hash)) {
+            return ATTESTATION_ERR_INPUT;
+        }
+        if (!eq32(a->precompile_binary_hash, b->expected_precompile_binary_hash)) {
+            return ATTESTATION_ERR_VERIFY;
+        }
     }
-    if (!is_zero(b->expected_policy_root) &&
-        !eq32(a->policy_root, b->expected_policy_root)) {
-        return ATTESTATION_ERR_VERIFY;
+    if (b->require_policy_root) {
+        if (is_zero(b->expected_policy_root)) {
+            return ATTESTATION_ERR_INPUT;
+        }
+        if (!eq32(a->policy_root, b->expected_policy_root)) {
+            return ATTESTATION_ERR_VERIFY;
+        }
     }
 
     return ATTESTATION_OK;

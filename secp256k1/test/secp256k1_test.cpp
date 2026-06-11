@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Self-contained byte-equality test for kinet_crypto secp256k1 ecrecover.
 //
 // Test vectors:
@@ -179,8 +176,8 @@ static void test_rfc6979_sample() {
     sig.s.to_be32(s_bytes);
 
     uint8_t got_pk[64];
-    auto st = kinet_secp256k1_ecrecover(e_bytes.data(), r_bytes, s_bytes, sig.v, got_pk);
-    ASSERT_TRUE("rfc6979 sample: ecrecover returns OK", st == KINET_SECP256K1_OK);
+    auto st = secp256k1_ecrecover(e_bytes.data(), r_bytes, s_bytes, sig.v, got_pk);
+    ASSERT_TRUE("rfc6979 sample: ecrecover returns OK", st == SECP256K1_OK);
     ASSERT_EQ_BYTES("rfc6979 sample: recovered pubkey matches", got_pk, expect_pk, 64);
 }
 
@@ -235,8 +232,8 @@ static void test_roundtrip_many() {
         e.to_be32(e_bytes);
 
         uint8_t got_pk[64];
-        auto st = kinet_secp256k1_ecrecover(e_bytes, r_bytes, s_bytes, sig.v, got_pk);
-        if (st == KINET_SECP256K1_OK && std::memcmp(got_pk, expect_pk, 64) == 0) {
+        auto st = secp256k1_ecrecover(e_bytes, r_bytes, s_bytes, sig.v, got_pk);
+        if (st == SECP256K1_OK && std::memcmp(got_pk, expect_pk, 64) == 0) {
             ++passed;
         } else {
             std::fprintf(stderr, "ROUND-TRIP FAIL i=%d  status=%d\n", i, (int)st);
@@ -255,26 +252,26 @@ static void test_edge_cases() {
     // r = 0  -> INVALID_R
     {
         uint8_t hash[32] = {1,2,3}, r[32] = {0}, s[32] = {0xFF}, pk[64];
-        auto st = kinet_secp256k1_ecrecover(hash, r, s, 0, pk);
-        ASSERT_TRUE("edge: r=0 -> INVALID_R", st == KINET_SECP256K1_ERR_INVALID_R);
+        auto st = secp256k1_ecrecover(hash, r, s, 0, pk);
+        ASSERT_TRUE("edge: r=0 -> INVALID_R", st == SECP256K1_ERR_INVALID_R);
     }
     // s = 0  -> INVALID_S
     {
         uint8_t hash[32] = {1,2,3}, r[32] = {0xFF}, s[32] = {0}, pk[64];
-        auto st = kinet_secp256k1_ecrecover(hash, r, s, 0, pk);
-        ASSERT_TRUE("edge: s=0 -> INVALID_S", st == KINET_SECP256K1_ERR_INVALID_S);
+        auto st = secp256k1_ecrecover(hash, r, s, 0, pk);
+        ASSERT_TRUE("edge: s=0 -> INVALID_S", st == SECP256K1_ERR_INVALID_S);
     }
     // r = n  -> INVALID_R
     {
         uint8_t hash[32] = {1,2,3}, r_be[32], s_be[32] = {0xFF}, pk[64];
         lc::N.to_be32(r_be);
-        auto st = kinet_secp256k1_ecrecover(hash, r_be, s_be, 0, pk);
-        ASSERT_TRUE("edge: r=n -> INVALID_R", st == KINET_SECP256K1_ERR_INVALID_R);
+        auto st = secp256k1_ecrecover(hash, r_be, s_be, 0, pk);
+        ASSERT_TRUE("edge: r=n -> INVALID_R", st == SECP256K1_ERR_INVALID_R);
     }
     // null arg -> NULL_ARG
     {
-        auto st = kinet_secp256k1_ecrecover(nullptr, nullptr, nullptr, 0, nullptr);
-        ASSERT_TRUE("edge: null args -> NULL_ARG", st == KINET_SECP256K1_ERR_NULL_ARG);
+        auto st = secp256k1_ecrecover(nullptr, nullptr, nullptr, 0, nullptr);
+        ASSERT_TRUE("edge: null args -> NULL_ARG", st == SECP256K1_ERR_NULL_ARG);
     }
 }
 
@@ -307,11 +304,11 @@ static void test_batch() {
         base[96] = sig.v;
     }
 
-    auto st = kinet_secp256k1_ecrecover_batch(inputs.data(), N, got_pk.data(), got_st.data());
-    ASSERT_TRUE("batch: top-level OK", st == KINET_SECP256K1_OK);
+    auto st = secp256k1_ecrecover_batch(inputs.data(), N, got_pk.data(), got_st.data());
+    ASSERT_TRUE("batch: top-level OK", st == SECP256K1_OK);
     int ok = 0;
     for (int i = 0; i < N; ++i) {
-        if (got_st[i] == KINET_SECP256K1_OK
+        if (got_st[i] == SECP256K1_OK
             && std::memcmp(&got_pk[i * 64], &expect_pk[i * 64], 64) == 0) ++ok;
     }
     char buf[64];

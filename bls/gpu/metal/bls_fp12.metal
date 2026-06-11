@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Fp12 = Fp6[w] / (w^2 - v) for BLS12-381.
 // Layout: struct Fp12 { Fp6 c0, c1; }  ==  blst_fp12 { blst_fp6 fp6[2]; } byte-equal.
 // Element c0 + c1 w  with w^2 = v.
@@ -219,7 +216,10 @@ inline Fp12 fp12_frobenius(Fp12 a, uint n) {
 
 // =============================================================================
 // Kernels — buffer element size = 576 bytes (sizeof(Fp12) = 2 * 288).
+// Higher-tower files #define BLS_FP12_NO_KERNELS before #including.
 // =============================================================================
+
+#ifndef BLS_FP12_NO_KERNELS
 
 kernel void k_fp12_add(
     device const Fp12* a [[buffer(0)]],
@@ -293,3 +293,5 @@ kernel void k_fp12_cyclo_sqr(
     if (tid >= n) return;
     out[tid] = fp12_cyclotomic_sqr(a[tid]);
 }
+
+#endif // BLS_FP12_NO_KERNELS

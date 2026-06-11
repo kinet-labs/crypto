@@ -156,7 +156,7 @@ $ ./build-canonical/keccak_test
 $ ./build-canonical/secp256k1_test
 === ALL TESTS PASSED (0 failures) ===
 
-$ KINET_CRYPTO_SECP256K1_METALLIB=$(pwd)/build-canonical/kinet_crypto_secp256k1.metallib \
+$ CRYPTO_SECP256K1_METALLIB=$(pwd)/build-canonical/kinet_crypto_secp256k1.metallib \
     ./build-canonical/secp256k1_gpu_test
 byte-equal: 32/32
 === ALL TESTS PASSED (0 failures) ===

@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Metal driver for batch secp256k1 ecrecover. macOS / iOS / iPadOS only.
 //
 // Loads the precompiled metallib produced from kernels.metal, dispatches one
@@ -33,7 +30,7 @@
 #include <vector>
 #include <cstring>
 
-extern "C" kinet_secp256k1_status kinet_secp256k1_ecrecover_address_batch_metal(
+extern "C" secp256k1_status secp256k1_ecrecover_address_batch_metal(
     const uint8_t* inputs,    // n * 97 bytes
     size_t n,
     uint8_t* out_addr,        // n * 20 bytes
@@ -41,26 +38,26 @@ extern "C" kinet_secp256k1_status kinet_secp256k1_ecrecover_address_batch_metal(
     const char* metallib_path) {
 
     if (!inputs || !out_addr || !out_st || !metallib_path) {
-        return KINET_SECP256K1_ERR_NULL_ARG;
+        return SECP256K1_ERR_NULL_ARG;
     }
-    if (n == 0) return KINET_SECP256K1_OK;
+    if (n == 0) return SECP256K1_OK;
 
     @autoreleasepool {
         id<MTLDevice> device = MTLCreateSystemDefaultDevice();
-        if (!device) return KINET_SECP256K1_ERR_NULL_ARG;
+        if (!device) return SECP256K1_ERR_NULL_ARG;
 
         NSError* err = nil;
         NSString* path = [NSString stringWithUTF8String:metallib_path];
         NSURL* url = [NSURL fileURLWithPath:path];
         id<MTLLibrary> lib = [device newLibraryWithURL:url error:&err];
-        if (!lib) return KINET_SECP256K1_ERR_NULL_ARG;
+        if (!lib) return SECP256K1_ERR_NULL_ARG;
 
         id<MTLFunction> fn = [lib newFunctionWithName:@"secp256k1_ecrecover_batch"];
-        if (!fn) return KINET_SECP256K1_ERR_NULL_ARG;
+        if (!fn) return SECP256K1_ERR_NULL_ARG;
 
         id<MTLComputePipelineState> pipeline =
             [device newComputePipelineStateWithFunction:fn error:&err];
-        if (!pipeline) return KINET_SECP256K1_ERR_NULL_ARG;
+        if (!pipeline) return SECP256K1_ERR_NULL_ARG;
 
         id<MTLCommandQueue> queue = [device newCommandQueue];
 
@@ -111,11 +108,11 @@ extern "C" kinet_secp256k1_status kinet_secp256k1_ecrecover_address_batch_metal(
             const uint8_t* src = &out_dev[i * OUT_STRIDE];
             std::memcpy(out_addr + i * 20, src, 20);
             uint8_t valid = src[20];
-            out_st[i] = valid ? (uint8_t)KINET_SECP256K1_OK
-                              : (uint8_t)KINET_SECP256K1_ERR_AT_INFINITY;
+            out_st[i] = valid ? (uint8_t)SECP256K1_OK
+                              : (uint8_t)SECP256K1_ERR_AT_INFINITY;
         }
     }
-    return KINET_SECP256K1_OK;
+    return SECP256K1_OK;
 }
 
 #endif // __APPLE__ && __OBJC__

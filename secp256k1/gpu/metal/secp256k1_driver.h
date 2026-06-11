@@ -16,10 +16,10 @@
 // - Scalar multiplication via 16 lookups + 15 additions
 // - Much faster than double-and-add for random scalars
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
-#ifndef KINET_CRYPTO_METAL_SECP256K1_H
-#define KINET_CRYPTO_METAL_SECP256K1_H
-
+#pragma once
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -525,5 +525,3 @@ void metal_secp256k1_free_table(
 #ifdef __cplusplus
 }
 #endif
-
-#endif // KINET_CRYPTO_METAL_SECP256K1_H

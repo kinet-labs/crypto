@@ -31,7 +31,7 @@ Out of scope: per-VM dirs (cevm, platformvm, xvm, aivm, mpcvm, bridgevm), other 
 | `KINET_PLUGIN_PATH` | `PLUGIN_PATH` |
 | `KINET_TESTNET_RPC` | `TESTNET_RPC` |
 | `KINET_MAINNET_RPC` | `MAINNET_RPC` |
-| `KINET_CRYPTO_SECP256K1_METALLIB` | `SECP256K1_METALLIB` |
+| `CRYPTO_SECP256K1_METALLIB` | `SECP256K1_METALLIB` |
 
 Backwards-compat: read new name first; on miss, read old name with deprecation warning. One transition release. Drop next.
 
@@ -193,7 +193,7 @@ FFI symbol names inside `koffi.func(...)` strings: drop `kinet_` from C symbol n
 
 - Pedersen domain-separation tags `KINET_PEDERSEN_G`/`KINET_PEDERSEN_H` in `pedersen.go:44-48` — deployed contracts depend on byte values. Documented in code.
 - Header guards `#ifndef KINET_*_H` — file-private, no leakage.
-- CMake variables `KINET_CRYPTO_ENABLE_*`, `KINET_CRYPTO_BUILD_TESTS`, `KINET_CRYPTO_ALGS`, `KINET_CRYPTO_HAS_*` — build-system, not user-facing.
+- CMake variables `CRYPTO_ENABLE_*`, `CRYPTO_BUILD_TESTS`, `CRYPTO_ALGS`, `CRYPTO_HAS_*` — build-system, not user-facing.
 - Library file names `libkinetcrypto.*`, `libkinet_*` — path-level, opt-in.
 - `KinetLibrary.cmake`, `KinetAlgorithm.cmake` internal vars (`KINET_NAME`, `KINET_VERSION`, etc.) — CMake function locals.
 - Plugin file names `kinet_metal.plugin`, `kinet_webgpu.plugin`, `kinet_cuda.plugin` — file paths.
@@ -220,8 +220,8 @@ FFI symbol names inside `koffi.func(...)` strings: drop `kinet_` from C symbol n
 - `AUDIT.md` — env name
 
 ### kinet-labs/crypto (~40 files)
-- `c-abi/kinet_crypto.h` — symbol decls + macros
-- `c-abi/c_kinet_crypto.cpp` — backend macros
+- `c-abi/crypto.h` — symbol decls + macros
+- `c-abi/c_crypto.cpp` — backend macros
 - `include/kinet/crypto/secp256k1.h` — enum/decls
 - `include/kinet/crypto/keccak.h` — decls
 - `include/kinet/crypto/crypto.h` — fat API symbols + macros

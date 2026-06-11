@@ -5,10 +5,10 @@
 // High-performance BLAKE3 hashing with GPU parallelization.
 // Based on the official BLAKE3 specification.
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
-#ifndef KINET_METAL_BLAKE3_H
-#define KINET_METAL_BLAKE3_H
-
+#pragma once
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -273,5 +273,3 @@ MetalBLAKE3Result metal_blake3_hash_file(
 #ifdef __cplusplus
 }
 #endif
-
-#endif // KINET_METAL_BLAKE3_H

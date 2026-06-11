@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // SLH-DSA (FIPS 205, SPHINCS+) batch verification in WGSL.
 // Hash-based signature scheme using SHAKE256 (Keccak-based).
 // Each thread verifies one signature by recomputing WOTS+ chains

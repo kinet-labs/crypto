@@ -1,6 +1,3 @@
-// Copyright (c) 2024-2026 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // CGGMP21 threshold ECDSA partial signing in WGSL.
 // Computes sigma_i = k_i * m + r * chi_i (mod n) for each participant.
 // Uses secp256k1 order n for scalar arithmetic.

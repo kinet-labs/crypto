@@ -6,8 +6,8 @@ include(KinetAlgorithm)
 
 kinet_add_algorithm(
     NAME    keccak
-    SOURCES cpp/keccak.cpp
-    HEADERS ../include/kinet/crypto/keccak.h
+    SOURCES cpp/keccak.cpp cpp/keccak_service.cpp
+    HEADERS ../include/kinet/crypto/keccak.h cpp/keccak_service.hpp
     CABI    c-abi/c_keccak.cpp
 )
 

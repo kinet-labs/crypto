@@ -10,6 +10,8 @@
 // - Scalar multiplication: 16 table lookups + 15 point additions
 // - Perfect for batch operations on Apple Silicon GPU
 //
+// Copyright (C) 2024-2025 Kinet Industries Inc.
+// SPDX-License-Identifier: Apache-2.0
 
 #include <metal_stdlib>
 using namespace metal;

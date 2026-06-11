@@ -1,80 +1,63 @@
-// cevm: Fast Ethereum Virtual Machine implementation
-// Copyright 2023 The cevm Authors.
-// SPDX-License-Identifier: Apache-2.0
+// First-party bn254 (alt_bn128) implementation. Public API matches the
+// surface that the c-abi shim wires against:
+//
+//   evmmax::bn254::validate(pt)         - membership test
+//   evmmax::bn254::mul(pt, c)           - G1 scalar multiplication
+//   evmmax::bn254::pairing_check(pairs) - EIP-197 pairing predicate
+//   evmmax::bn254::hash_to_g1(msg, dst) - RFC 9380 SSWU map-to-curve
+//
+// The legacy cevm-vendored body has been removed in favour of this
+// first-party implementation. See bn254_fp.hpp (field) and bn254_g1.hpp
+// (curve). The `evmmax::bn254` namespace and the validate/mul/pairing_check
+// signatures are preserved for migration safety: the c-abi shim and any
+// existing callers continue to link unchanged.
+
 #pragma once
 
-#include "ecc.hpp"
+#include "bn254_fp.hpp"
+#include "bn254_fp2.hpp"
+#include "bn254_g1.hpp"
+#include "bn254_g2.hpp"
+#include "bn254_pairing.hpp"
+
+#include <cstddef>
+#include <cstdint>
 #include <optional>
 #include <span>
+#include <utility>
 #include <vector>
 
-namespace evmmax::bn254
-{
-using namespace intx;
+namespace evmmax::bn254 {
 
-/// The BN254 curve parameters.
-struct Curve
-{
-    /// The field/scalar unsigned int type.
-    using uint_type = uint256;
+using uint256 = kinet::crypto::bn254::U256;
 
-    /// The order of the curve (N).
-    static constexpr auto ORDER =
-        0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001_u256;
+struct AffinePoint {
+    uint256 x;
+    uint256 y;
 
-    struct FpSpec
-    {
-        /// The field prime number (P).
-        static constexpr auto ORDER =
-            0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47_u256;
-    };
-    using Fp = ecc::FieldElement<FpSpec>;
-
-    static constexpr auto& FIELD_PRIME = Fp::ORDER;
-
-    static constexpr auto A = 0;
-    static constexpr auto B = Fp{3};
-
-    /// Endomorphism parameters. See ecc::decompose().
-    /// @{
-    /// λ
-    static constexpr auto LAMBDA = 0xb3c4d79d41a917585bfc41088d8daaa78b17ea66b99c90dd_u256;
-    /// β
-    static constexpr Fp BETA{0x59e26bcea0d48bacd4f263f1acdb5c4f5763473177fffffe_u256};
-    /// x₁
-    static constexpr auto X1 = 0x6f4d8248eeb859fd95b806bca6f338ee_u256;
-    /// -y₁
-    static constexpr auto MINUS_Y1 = 0x6f4d8248eeb859fbf83e9682e87cfd45_u256;
-    /// x₂
-    static constexpr auto X2 = 0x6f4d8248eeb859fc8211bbeb7d4f1128_u256;
-    /// y₂
-    static constexpr auto Y2 = 0x6f4d8248eeb859fd0be4e1541221250b_u256;
-    /// @}
+    bool operator==(const AffinePoint&) const noexcept = default;
+    bool operator==(int v) const noexcept {
+        return v == 0 && x.is_zero() && y.is_zero();
+    }
 };
 
-using AffinePoint = ecc::AffinePoint<Curve>;
+template <typename T>
+struct Point {
+    T x;
+    T y;
+};
 
-using Point = ecc::Point<uint256>;
-/// Note that real part of G2 value goes first and imaginary part is the second. i.e (a + b*i)
-/// The pairing check precompile EVM ABI presumes that imaginary part goes first.
-using ExtPoint = ecc::Point<std::pair<uint256, uint256>>;
+using G1Point  = Point<uint256>;
+using ExtPoint = Point<std::pair<uint256, uint256>>;
 
-/// Validates that point is from the bn254 curve group
-///
-/// Returns true if y^2 == x^3 + 3. Input is converted to the Montgomery form.
 bool validate(const AffinePoint& pt) noexcept;
 
-/// Scalar multiplication in bn254 curve group.
-///
-/// Computes [c]P for a point in affine coordinate on the bn254 curve,
 AffinePoint mul(const AffinePoint& pt, const uint256& c) noexcept;
 
-/// ate paring implementation for bn254 curve according to https://eips.ethereum.org/EIPS/eip-197
-///
-/// @param pairs  Sequence of point pairs: a point from the bn254 curve G1 group over the base field
-///               followed by a point from twisted curve G2 group over extension field Fq^2.
-/// @return       `true` when  ∏e(vG2[i], vG1[i]) == 1 for i in [0, n] else `false`.
-///               std::nullopt on error.
-std::optional<bool> pairing_check(std::span<const std::pair<Point, ExtPoint>> pairs) noexcept;
+std::optional<bool> pairing_check(
+    std::span<const std::pair<G1Point, ExtPoint>> pairs) noexcept;
+
+bool hash_to_g1(std::span<const uint8_t> msg, std::span<const uint8_t> dst,
+                AffinePoint& out) noexcept;
 
 }  // namespace evmmax::bn254

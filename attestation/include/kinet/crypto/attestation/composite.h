@@ -1,6 +1,4 @@
-/* Copyright (c) 2024-2026 Kinet Industries Inc.
- * SPDX-License-Identifier: BSD-3-Clause-Eco
- *
+/*
  * Composite confidential-compute attestation.
  *
  * A single attestation_root binds:
@@ -21,9 +19,7 @@
  * This is the value that goes into QuasarRoundDescriptor.attestation_root in
  * the cert ABI. It is also what the KMS gates epoch-key release on.
  */
-#ifndef KINET_CRYPTO_ATTESTATION_COMPOSITE_H
-#define KINET_CRYPTO_ATTESTATION_COMPOSITE_H
-
+#pragma once
 #include <stddef.h>
 #include <stdint.h>
 
@@ -103,9 +99,23 @@ int attestation_compute_composite_root(
     const NodeConfidentialAttestation* attestation,
     uint8_t out_root[32]);
 
-/* Baseline expected by a validator. Hashes set to all-zero are wildcards
- * (skip that field). min_io_level is the floor; anything weaker rejects.
- * required_*_kind set to *_NONE means "any kind acceptable" (wildcard). */
+/* Baseline expected by a validator.
+ *
+ * Each expected field is gated by an explicit `require_*` flag:
+ *   * require_*  = true  -> strict equality with the corresponding observed
+ *                            field. A zero-valued expected hash is rejected
+ *                            (treating it as a real measurement, never a
+ *                            wildcard). For kinds, this enforces that the
+ *                            attestation kind == required_*_kind.
+ *   * require_*  = false -> the field is skipped entirely; expected_* /
+ *                            required_*_kind are not consulted.
+ *
+ * min_io_level is always enforced (floor). Set it to ATTESTATION_IO_NONE to
+ * disable the floor.
+ *
+ * Rationale: the previous "all-zero hash = wildcard" heuristic silently turned
+ * forgotten or default-initialized fields into accept-anything. The explicit
+ * flag makes intent unambiguous and refuses to verify a zero-hash baseline. */
 typedef struct {
     uint8_t expected_quasar_gpu_binary_hash[32];
     uint8_t expected_crypto_kernel_hash[32];
@@ -114,7 +124,17 @@ typedef struct {
     uint8_t min_io_level;
     uint8_t required_cpu_tee_kind;
     uint8_t required_gpu_tee_kind;
-    uint8_t _reserved[5];
+
+    /* Per-field enforcement flags. true = enforce strict equality, false =
+     * skip. Encoded as uint8_t (0 = false, non-zero = true) for stable C ABI. */
+    uint8_t require_quasar_gpu_binary_hash;
+    uint8_t require_crypto_kernel_hash;
+    uint8_t require_precompile_binary_hash;
+    uint8_t require_policy_root;
+    uint8_t require_cpu_tee_kind;
+    uint8_t require_gpu_tee_kind;
+
+    uint8_t _reserved[7];
 } AttestationBaseline;
 
 /* Verify a remote node's attestation against an expected baseline.
@@ -126,5 +146,3 @@ int attestation_verify_baseline(
 #ifdef __cplusplus
 }  /* extern "C" */
 #endif
-
-#endif /* KINET_CRYPTO_ATTESTATION_COMPOSITE_H */
