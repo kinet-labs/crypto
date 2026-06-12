@@ -1,3 +1,5 @@
+// Derived from evmone (Apache-2.0)
+//
 /// @file keccak256.metal
 /// Metal compute shader for parallel Keccak-256 hashing.
 ///

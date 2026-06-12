@@ -111,7 +111,7 @@ const char* crypto_version(void);
 #define CRYPTO_ALG_SECP256K1       (1ULL << 7)   /* recover only; sign/verify still NOTIMPL */
 #define CRYPTO_ALG_SECP256R1       (1ULL << 8)   /* verify wired (RIP-7212/EIP-7951) */
 #define CRYPTO_ALG_ED25519         (1ULL << 9)
-#define CRYPTO_ALG_SR25519         (1ULL << 10)  /* NOTIMPL */
+#define CRYPTO_ALG_SR25519         (1ULL << 10)  /* sign/verify wired (kinet-labs/sr25519-crust) */
 #define CRYPTO_ALG_BN254           (1ULL << 11)  /* add/mul/pairing wired */
 #define CRYPTO_ALG_BLS12_381       (1ULL << 12)  /* canonical bls12_381_* surface; legacy bls_* still NOTIMPL */
 #define CRYPTO_ALG_KZG             (1ULL << 13)

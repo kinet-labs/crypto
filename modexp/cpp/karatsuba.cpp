@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: BSD-3-Clause-Eco
+// kinet-labs/crypto: Karatsuba multiplication body.
 
 #include "karatsuba.hpp"
 #include "mulmod.hpp"     // crypto::sub, crypto::addmul, crypto::mul (single-limb)

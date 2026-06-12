@@ -69,6 +69,7 @@ extern "C" uint64_t crypto_status(void) {
          | CRYPTO_ALG_SECP256K1     /* recover wired; sign/verify NOTIMPL */
          | CRYPTO_ALG_SECP256R1     /* verify wired (RIP-7212 / EIP-7951) */
          | CRYPTO_ALG_ED25519
+         | CRYPTO_ALG_SR25519        /* Schnorrkel sign/verify wired via kinet-labs/sr25519-crust */
          | CRYPTO_ALG_BN254
          | CRYPTO_ALG_BLS12_381     /* bls12_381_* canonical surface */
          | CRYPTO_ALG_KZG

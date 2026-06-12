@@ -1,3 +1,4 @@
+// kinet-labs/crypto: Karatsuba multiplication for big-int modexp (EIP-198 RSA-4096)
 // Variable-width Karatsuba (n^log2(3) ≈ n^1.585) for unsigned big integers
 // stored as little-endian uint64_t limb arrays. Recursive: splits at half on
 // each level, falls back to O(n^2) schoolbook at KARATSUBA_THRESHOLD limbs.

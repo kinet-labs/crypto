@@ -19,7 +19,6 @@
 // fast (~20ns latency, ~3TB/s bandwidth per SIMD on M3).
 //
 // See patent: PAT-FHE-010-four-step-ntt-metal.md
-//
 // =============================================================================
 
 #include <metal_stdlib>

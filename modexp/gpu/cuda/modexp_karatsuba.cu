@@ -1,3 +1,4 @@
+// kinet-labs/crypto: Karatsuba multiplication kernel (CUDA / nvcc-compatible C++).
 // One-shot full multi-precision multiply r[2n] = x[n] * y[n] for n in
 // [16, 64] limbs (1024..4096 bits). Native 64-bit integer arithmetic is
 // available on CUDA so we use uint64_t and __umul64hi directly.

@@ -1,3 +1,4 @@
+// kinet-labs/crypto: Karatsuba multiplication kernel (WebGPU Shading Language).
 // WGSL has no native uint64; we represent each 64-bit limb as a vec2<u32>
 // (lo, hi). 64-bit arithmetic is implemented via 32x32 -> 64-bit native ops.
 //

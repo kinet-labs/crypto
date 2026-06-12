@@ -1,3 +1,4 @@
+// kinet-labs/crypto: Karatsuba multiplication kernel (Metal Shading Language).
 // One-shot full multi-precision multiply r[2n] = x[n] * y[n] for power-of-2
 // n in [16, 64] limbs (1024..4096 bits).
 //

@@ -10,7 +10,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
         Debug Release RelWithDebInfo MinSizeRel)
 endif()
 
-project(kinet_crypto VERSION 1.0.0 LANGUAGES C CXX)
+project(kinet_crypto VERSION 1.4.2 LANGUAGES C CXX)
 
 # Opt-in AddressSanitizer + UndefinedBehaviorSanitizer build for tests.
 # Use: cmake -DCRYPTO_ENABLE_ASAN=ON .. && cmake --build .
@@ -1104,18 +1104,13 @@ if(CRYPTO_BUILD_TESTS)
     add_test(NAME slhdsa_kat_test COMMAND slhdsa_kat_test)
     set_tests_properties(slhdsa_kat_test PROPERTIES TIMEOUT 1800)
 
-    # sr25519 -- C-ABI scaffold contract. First-party body has not landed
-    # (per audit ac17eea51acbd0ab3); both sr25519_sign and sr25519_verify
-    # return CRYPTO_ERR_NOTIMPL after argument validation. Test asserts that
-    # contract and is labeled DISABLED at registration so it does not run in
-    # the default ctest pass and so it does not falsely appear as a 0-vector
-    # test.
+    # sr25519 -- Schnorrkel sign/verify wired via kinet-labs/sr25519-crust
+    # (pure-C donna; FetchContent in sr25519/CMakeLists.txt). Test asserts
+    # the canonical Substrate //Alice seed -> public key KAT, sign+verify
+    # roundtrip, and tampered-msg / tampered-sig rejection.
     add_executable(sr25519_test sr25519/test/sr25519_test.cpp)
     target_link_libraries(sr25519_test PRIVATE sr25519)
     add_test(NAME sr25519_test COMMAND sr25519_test)
-    set_tests_properties(sr25519_test PROPERTIES
-        LABELS DISABLED
-        DISABLED TRUE)
 
     # verkle -- input-validation contract for verify_batch (10 negative + 12
     # well-formed-but-NOTIMPL). Body returns kStatusNotImplemented until the

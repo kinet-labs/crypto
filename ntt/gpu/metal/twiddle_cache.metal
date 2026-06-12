@@ -22,7 +22,6 @@
 //   Stage 2: 4 twiddles  -> constant memory (4 cycles)
 //   Stage 3: 8 twiddles  -> constant memory (4 cycles)
 //   Stage 4+: threadgroup prefetch (20-30 cycles)
-//
 // =============================================================================
 
 #include <metal_stdlib>
