@@ -3,8 +3,8 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-#include "ecc.hpp"
-#include "hash_types.h"
+#include "cevm_support/ecc.hpp"
+#include "cevm_support/hash_types.h"
 
 namespace evmmax::secp256r1
 {

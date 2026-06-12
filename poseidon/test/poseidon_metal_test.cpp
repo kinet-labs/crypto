@@ -119,13 +119,13 @@ int main() {
     std::fprintf(stdout, "=== poseidon2-bn254 Metal KAT ===\n");
 
 #if __APPLE__
-    const char* metallib = std::getenv("KINET_CRYPTO_POSEIDON_METALLIB");
+    const char* metallib = std::getenv("CRYPTO_POSEIDON_METALLIB");
     if (!metallib) {
-        std::fprintf(stdout, "(skip GPU equality: KINET_CRYPTO_POSEIDON_METALLIB unset)\n");
+        std::fprintf(stdout, "(skip GPU equality: CRYPTO_POSEIDON_METALLIB unset)\n");
         std::fprintf(stdout, "=== ALL TESTS PASSED (GPU skipped) ===\n");
         return 0;
     }
-    const char* kat_env = std::getenv("KINET_CRYPTO_POSEIDON_VECTORS");
+    const char* kat_env = std::getenv("CRYPTO_POSEIDON_VECTORS");
     std::string kat_path = kat_env ? kat_env :
         "poseidon/test/vectors/poseidon2_t2_kat.json";
     std::string raw = slurp(kat_path);

@@ -41,6 +41,59 @@ set_target_properties(gpukit_cpu PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(gpukit_cpu PUBLIC keccak_cpu)
 add_library(kinet::gpukit_cpu ALIAS gpukit_cpu)
 
+# ---- Multi-curve Pippenger MSM ---------------------------------------------
+# Dispatcher + per-backend per-curve MSM. CPU body links against the
+# first-party curve libs (secp256k1_cpu, bn254_cpu, banderwagon_cpu) so we do
+# not duplicate field arithmetic. BLS12-381 G1 dispatches through the
+# header-only first-party Fp384 + G1 Jacobian arithmetic in
+# crypto/bls/cpp/bls12_381_{fp,g1}.hpp -- no blst link, no NOTIMPL fallback.
+set(_GPUKIT_MP_SOURCES
+    cpp/cpu_reference/multi_pippenger.cpp
+    c-abi/c_multi_pippenger.cpp
+)
+if(APPLE AND CRYPTO_ENABLE_METAL)
+    list(APPEND _GPUKIT_MP_SOURCES gpu/metal/multi_pippenger_driver.mm)
+endif()
+if(CRYPTO_ENABLE_CUDA OR GPUKIT_ENABLE_CUDA)
+    list(APPEND _GPUKIT_MP_SOURCES gpu/cuda/multi_pippenger.cu)
+else()
+    set_source_files_properties(gpu/cuda/multi_pippenger.cu
+                                PROPERTIES LANGUAGE CXX)
+    list(APPEND _GPUKIT_MP_SOURCES gpu/cuda/multi_pippenger.cu)
+endif()
+if(CRYPTO_ENABLE_WGSL OR GPUKIT_ENABLE_WGSL)
+    list(APPEND _GPUKIT_MP_SOURCES gpu/wgsl/multi_pippenger_driver.cpp)
+endif()
+
+add_library(gpukit_multi_pippenger STATIC ${_GPUKIT_MP_SOURCES})
+target_include_directories(gpukit_multi_pippenger PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+)
+target_compile_features(gpukit_multi_pippenger PUBLIC cxx_std_20)
+set_target_properties(gpukit_multi_pippenger PROPERTIES
+    POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(gpukit_multi_pippenger
+    PUBLIC gpukit_cpu
+    PUBLIC secp256k1_cpu
+    PUBLIC bn254_cpu
+    PUBLIC banderwagon_cpu
+)
+# BLS12-381 G1 is fully wired through the first-party Fp384 + G1 Jacobian
+# headers in crypto/bls/cpp/bls12_381_{fp,g1}.hpp.  These are header-only,
+# stdlib-only, and the trait header in
+# gpukit/curve_traits/bls12_381_g1_first_party_traits.h composes them with
+# the same signed-digit Pippenger template the other curves use.  No blst.
+target_compile_definitions(gpukit_multi_pippenger
+    PUBLIC GPUKIT_MP_HAS_BLS12_381_G1=1)
+if(APPLE AND CRYPTO_ENABLE_METAL)
+    set_source_files_properties(gpu/metal/multi_pippenger_driver.mm
+        PROPERTIES COMPILE_FLAGS "-fobjc-arc")
+    target_link_libraries(gpukit_multi_pippenger
+        PUBLIC "-framework Metal" "-framework Foundation")
+endif()
+add_library(kinet::gpukit_multi_pippenger ALIAS gpukit_multi_pippenger)
+
 # ---- Metal driver ----------------------------------------------------------
 
 if(APPLE AND CRYPTO_ENABLE_METAL)
@@ -80,6 +133,10 @@ if(APPLE AND CRYPTO_ENABLE_METAL)
             ${CMAKE_CURRENT_SOURCE_DIR}/gpu/metal/merkle_compose.metal
             ${CMAKE_CURRENT_SOURCE_DIR}/gpu/metal/transcript_root.metal
             ${CMAKE_CURRENT_SOURCE_DIR}/gpu/metal/ntt.metal
+            ${CMAKE_CURRENT_SOURCE_DIR}/gpu/metal/multi_pippenger_secp256k1.metal
+            ${CMAKE_CURRENT_SOURCE_DIR}/gpu/metal/multi_pippenger_bn254_g1.metal
+            ${CMAKE_CURRENT_SOURCE_DIR}/gpu/metal/multi_pippenger_bls12_381_g1.metal
+            ${CMAKE_CURRENT_SOURCE_DIR}/gpu/metal/multi_pippenger_banderwagon.metal
         )
         set(_GPUKIT_AIR_FILES "")
         foreach(_kn ${_GPUKIT_METAL_KERNELS})
@@ -216,6 +273,15 @@ if(CRYPTO_BUILD_TESTS)
                 ENVIRONMENT "GPUKIT_METALLIB=${CMAKE_BINARY_DIR}/libgpukit.metallib")
         endif()
     endforeach()
+
+    # multi_pippenger has its own test target because it links the curve libs.
+    add_executable(gpukit_multi_pippenger_test test/multi_pippenger_test.cpp)
+    target_link_libraries(gpukit_multi_pippenger_test PRIVATE
+        gpukit_multi_pippenger
+        secp256k1_cpu bn254_cpu banderwagon_cpu)
+    add_test(NAME gpukit-multi-pippenger-test
+             COMMAND gpukit_multi_pippenger_test)
+
     add_custom_target(gpukit-tests
         DEPENDS
             gpukit_prefix_sum_test
@@ -225,5 +291,6 @@ if(CRYPTO_BUILD_TESTS)
             gpukit_merkle_compose_test
             gpukit_transcript_root_test
             gpukit_ntt_test
+            gpukit_multi_pippenger_test
     )
 endif()

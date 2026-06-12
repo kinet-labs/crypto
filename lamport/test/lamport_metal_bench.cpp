@@ -10,8 +10,6 @@
 // The crossover may be very high or absent on M1; that is expected per the
 // directive ("Cryptographic correctness is the requirement, not speed").
 //
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-// Copyright (C) 2025-2026 Kinet Industries Inc.
 // =============================================================================
 
 #include "../cpp/lamport.hpp"
@@ -57,10 +55,10 @@ double median(std::vector<double>& xs) {
 }  // namespace
 
 int main() {
-    const char* metallib = std::getenv("KINET_CRYPTO_LAMPORT_METALLIB");
+    const char* metallib = std::getenv("CRYPTO_LAMPORT_METALLIB");
     if (!metallib) {
         std::fprintf(stderr,
-            "SKIP lamport_metal_bench (KINET_CRYPTO_LAMPORT_METALLIB unset)\n");
+            "SKIP lamport_metal_bench (CRYPTO_LAMPORT_METALLIB unset)\n");
         return 0;
     }
 

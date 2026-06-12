@@ -106,14 +106,14 @@ int main() {
     std::fprintf(stdout, "=== blake3 Metal KAT (BLAKE3 spec) ===\n");
 
 #if __APPLE__
-    const char* metallib = std::getenv("KINET_CRYPTO_BLAKE3_METALLIB");
+    const char* metallib = std::getenv("CRYPTO_BLAKE3_METALLIB");
     if (!metallib) {
-        std::fprintf(stdout, "(skip GPU equality: KINET_CRYPTO_BLAKE3_METALLIB unset)\n");
+        std::fprintf(stdout, "(skip GPU equality: CRYPTO_BLAKE3_METALLIB unset)\n");
         std::fprintf(stdout, "=== ALL TESTS PASSED (GPU skipped) ===\n");
         return 0;
     }
 
-    const char* kat_path_env = std::getenv("KINET_CRYPTO_BLAKE3_VECTORS");
+    const char* kat_path_env = std::getenv("CRYPTO_BLAKE3_VECTORS");
     std::string kat_path = kat_path_env ? kat_path_env :
         "blake3/test/vectors/blake3_test_vectors.json";
     std::string raw = slurp(kat_path);

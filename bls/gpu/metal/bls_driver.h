@@ -5,8 +5,6 @@
 // C++ interface for dispatching BLS12-381 operations to Metal compute shaders.
 // Provides batch operations for signature verification and key aggregation.
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 #include <stdint.h>

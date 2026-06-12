@@ -10,7 +10,7 @@
 //      whenever (v1,r1) != (v2,r2).
 //
 // On non-Apple hosts the GPU batteries are skipped; CPU-only checks (#3, #4)
-// still run.  On Apple hosts without KINET_CRYPTO_BN254_METALLIB set, the file
+// still run.  On Apple hosts without CRYPTO_BN254_METALLIB set, the file
 // still links and registers as a passing test that records the GPU was skipped.
 
 #include "../cpp/bn254_fp.hpp"
@@ -130,7 +130,7 @@ int main() {
 
 #if __APPLE__
     bool gpu_available = (metal_is_available() == 1);
-    const char* metallib = std::getenv("KINET_CRYPTO_BN254_METALLIB");
+    const char* metallib = std::getenv("CRYPTO_BN254_METALLIB");
     if (!gpu_available || !metallib) {
         std::fprintf(stdout,
             "(skip GPU equality: metal_is_available=%d metallib=%s)\n",

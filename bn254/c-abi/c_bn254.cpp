@@ -26,21 +26,52 @@
 #include <utility>
 #include <vector>
 
+namespace {
+
+inline evmmax::bn254::AffinePoint affine_from_be64(const uint8_t in[64]) noexcept {
+    return evmmax::bn254::AffinePoint{
+        kinet::crypto::bn254::U256::from_be32(in),
+        kinet::crypto::bn254::U256::from_be32(in + 32),
+    };
+}
+
+inline void affine_to_be64(const evmmax::bn254::AffinePoint& p, uint8_t out[64]) noexcept {
+    p.x.to_be32(out);
+    p.y.to_be32(out + 32);
+}
+
+}  // namespace
+
 extern "C" int bn254_add(const uint8_t in[128], uint8_t out[64])
 {
     if (in == nullptr || out == nullptr) return CRYPTO_ERR_INPUT;
     using namespace evmmax::bn254;
 
-    const std::span<const uint8_t, 128> input{in, 128};
-    const auto p = AffinePoint::from_bytes(input.subspan<0, 64>());
-    const auto q = AffinePoint::from_bytes(input.subspan<64, 64>());
-    if (!p.has_value() || !q.has_value())
-        return CRYPTO_ERR_INPUT;
-    if (!validate(*p) || !validate(*q))
-        return CRYPTO_ERR_INPUT;
+    const auto P = affine_from_be64(in);
+    const auto Q = affine_from_be64(in + 64);
+    if (!validate(P) || !validate(Q)) return CRYPTO_ERR_INPUT;
 
-    const auto r = evmmax::ecc::add_affine(*p, *q);
-    r.to_bytes(std::span<uint8_t, 64>{out, 64});
+    // Point addition via mul-by-1 + multi-pair-free affine add: re-use the
+    // first-party G1 affine arithmetic directly (g1_add via Jacobian round-trip).
+    namespace lc = kinet::crypto::bn254;
+    auto to_jac = [](const AffinePoint& a) {
+        lc::G1Affine ga;
+        if (a.x.is_zero() && a.y.is_zero()) {
+            ga.x = lc::U256{}; ga.y = lc::U256{}; ga.infinity = true;
+        } else {
+            ga.x = lc::to_mont_fp(a.x); ga.y = lc::to_mont_fp(a.y); ga.infinity = false;
+        }
+        return lc::g1_to_jac(ga);
+    };
+    const lc::G1Jac sum = lc::g1_add(to_jac(P), to_jac(Q));
+    const lc::G1Affine ar = lc::g1_to_affine(sum);
+    AffinePoint r{};
+    if (ar.infinity) {
+        r.x = lc::U256{}; r.y = lc::U256{};
+    } else {
+        r.x = lc::from_mont_fp(ar.x); r.y = lc::from_mont_fp(ar.y);
+    }
+    affine_to_be64(r, out);
     return CRYPTO_OK;
 }
 
@@ -49,14 +80,12 @@ extern "C" int bn254_mul(const uint8_t in[96], uint8_t out[64])
     if (in == nullptr || out == nullptr) return CRYPTO_ERR_INPUT;
     using namespace evmmax::bn254;
 
-    const std::span<const uint8_t, 96> input{in, 96};
-    const auto p = AffinePoint::from_bytes(input.subspan<0, 64>());
-    if (!p.has_value() || !validate(*p))
-        return CRYPTO_ERR_INPUT;
+    const auto P = affine_from_be64(in);
+    if (!validate(P)) return CRYPTO_ERR_INPUT;
 
-    const auto c = intx::be::unsafe::load<intx::uint256>(in + 64);
-    const auto r = evmmax::bn254::mul(*p, c);
-    r.to_bytes(std::span<uint8_t, 64>{out, 64});
+    const auto k = kinet::crypto::bn254::U256::from_be32(in + 64);
+    const auto r = mul(P, k);
+    affine_to_be64(r, out);
     return CRYPTO_OK;
 }
 
@@ -66,28 +95,25 @@ extern "C" int bn254_pairing(const uint8_t* pairs, size_t n_pairs, uint8_t out[3
     if (n_pairs > 0 && pairs == nullptr) return CRYPTO_ERR_INPUT;
     using namespace evmmax::bn254;
 
-    std::vector<std::pair<Point, ExtPoint>> v;
+    std::vector<std::pair<G1Point, ExtPoint>> v;
     v.reserve(n_pairs);
-    for (size_t i = 0; i < n_pairs; ++i)
-    {
+    for (size_t i = 0; i < n_pairs; ++i) {
         const uint8_t* p = pairs + 192 * i;
-        // EIP-197: G2 imaginary part comes first in serialization.
-        v.emplace_back(
-            Point{
-                intx::be::unsafe::load<intx::uint256>(p + 0),
-                intx::be::unsafe::load<intx::uint256>(p + 32),
-            },
-            ExtPoint{
-                {intx::be::unsafe::load<intx::uint256>(p + 96),
-                    intx::be::unsafe::load<intx::uint256>(p + 64)},
-                {intx::be::unsafe::load<intx::uint256>(p + 160),
-                    intx::be::unsafe::load<intx::uint256>(p + 128)},
-            });
+        G1Point g1;
+        g1.x = kinet::crypto::bn254::U256::from_be32(p + 0);
+        g1.y = kinet::crypto::bn254::U256::from_be32(p + 32);
+        // EIP-197 G2 layout: x.imag(0..32) || x.real(32..64) || y.imag(64..96) || y.real(96..128)
+        // ExtPoint stores .first = real, .second = imag, so swap on read.
+        ExtPoint g2;
+        g2.x.first  = kinet::crypto::bn254::U256::from_be32(p + 96);   // x.real
+        g2.x.second = kinet::crypto::bn254::U256::from_be32(p + 64);   // x.imag
+        g2.y.first  = kinet::crypto::bn254::U256::from_be32(p + 160);  // y.real
+        g2.y.second = kinet::crypto::bn254::U256::from_be32(p + 128);  // y.imag
+        v.emplace_back(std::move(g1), std::move(g2));
     }
 
     const auto r = pairing_check(v);
-    if (!r.has_value())
-        return CRYPTO_ERR_INPUT;
+    if (!r.has_value()) return CRYPTO_ERR_INPUT;
 
     std::memset(out, 0, 32);
     out[31] = *r ? 1 : 0;

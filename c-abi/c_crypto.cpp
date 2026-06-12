@@ -67,6 +67,7 @@ extern "C" uint64_t crypto_status(void) {
          | CRYPTO_ALG_AEAD_CHACHA
          | CRYPTO_ALG_AEAD_AES_GCM
          | CRYPTO_ALG_SECP256K1     /* recover wired; sign/verify NOTIMPL */
+         | CRYPTO_ALG_SECP256R1     /* verify wired (RIP-7212 / EIP-7951) */
          | CRYPTO_ALG_ED25519
          | CRYPTO_ALG_BN254
          | CRYPTO_ALG_BLS12_381     /* bls12_381_* canonical surface */
@@ -78,12 +79,15 @@ extern "C" uint64_t crypto_status(void) {
          | CRYPTO_ALG_LAMPORT
          | CRYPTO_ALG_PEDERSEN      /* vector commit form wired */
          | CRYPTO_ALG_POSEIDON_BN254
+         | CRYPTO_ALG_POSEIDON_GLDLKS
          | CRYPTO_ALG_MODEXP
          | CRYPTO_ALG_EVM256
          | CRYPTO_ALG_NTT
          | CRYPTO_ALG_POLY_MUL
          | CRYPTO_ALG_BANDERWAGON
          | CRYPTO_ALG_ATTESTATION
+         | CRYPTO_ALG_RINGTAIL      /* Ring-LWE threshold sig (CPU body wired) */
+         | CRYPTO_ALG_CGGMP21       /* setup + partial_sign wired (aggregate+verify host-side) */
          ;
 }
 

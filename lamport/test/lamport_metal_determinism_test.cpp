@@ -42,9 +42,9 @@ int main() {
     std::fprintf(stdout, "=== lamport CPU vs Metal byte-equality (LP-2506) ===\n");
 
 #if __APPLE__
-    const char* metallib = std::getenv("KINET_CRYPTO_LAMPORT_METALLIB");
+    const char* metallib = std::getenv("CRYPTO_LAMPORT_METALLIB");
     if (!metallib) {
-        std::fprintf(stdout, "(skip GPU equality: KINET_CRYPTO_LAMPORT_METALLIB unset)\n");
+        std::fprintf(stdout, "(skip GPU equality: CRYPTO_LAMPORT_METALLIB unset)\n");
         std::fprintf(stdout, "=== ALL TESTS PASSED (GPU skipped) ===\n");
         return 0;
     }

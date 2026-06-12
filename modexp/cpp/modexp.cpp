@@ -1,9 +1,8 @@
 // cevm: Fast Ethereum Virtual Machine implementation
-// Copyright 2025 The cevm Authors.
-// SPDX-License-Identifier: Apache-2.0
 
 #include "modexp.hpp"
 #include "mulmod.hpp"
+#include "karatsuba.hpp"
 #include <evmmax/evmmax.hpp>
 #include <bit>
 #include <memory_resource>
@@ -15,6 +14,12 @@ namespace cevm::crypto
 {
 namespace
 {
+/// Threshold (in 64-bit limbs) above which the truncating multi-precision
+/// multiply switches from schoolbook to Karatsuba. Calibrated on
+/// arm64/Apple M-series; below 16 limbs (1024 bits) schoolbook wins due to
+/// recursion overhead and cache behavior.
+constexpr size_t MUL_KARATSUBA_THRESHOLD = 16;
+
 /// Adds y to x: x[] += y[]. The result is truncated to the size of x. Returns the carry bit.
 constexpr bool add(std::span<uint64_t> x, std::span<const uint64_t> y) noexcept
 {
@@ -28,9 +33,10 @@ constexpr bool add(std::span<uint64_t> x, std::span<const uint64_t> y) noexcept
     return carry;
 }
 
-/// Computes multiplication of x times y and truncates the result to the size of r:
-/// r[] = x[] * y[].
-constexpr void mul(
+/// Schoolbook truncating multi-precision multiply: r[] = x[] * y[] truncated to r.size().
+/// Called directly for small operands and as the small-side handler when
+/// Karatsuba isn't profitable.
+constexpr void mul_schoolbook(
     std::span<uint64_t> r, std::span<const uint64_t> x, std::span<const uint64_t> y) noexcept
 {
     assert(!x.empty());
@@ -55,6 +61,36 @@ constexpr void mul(
     // Truncating phase: product is wider than r, discard high words.
     for (size_t j = std::max(hi_iters, size_t{1}); j < y.size(); ++j)
         addmul(r.subspan(j), r.subspan(j), x.first(r.size() - j), y[j]);
+}
+
+/// Multi-precision multiply: r[] = x[] * y[] truncated to r.size().
+/// Dispatches to Karatsuba for operands ≥ MUL_KARATSUBA_THRESHOLD limbs
+/// (1024 bits at the default threshold of 16) when both operands meet the
+/// width criterion AND the destination has room for the full untruncated
+/// product. Otherwise falls back to schoolbook.
+inline void mul(
+    std::span<uint64_t> r, std::span<const uint64_t> x, std::span<const uint64_t> y) noexcept
+{
+    assert(!x.empty());
+    assert(!y.empty());
+    assert(r.size() >= std::max(x.size(), y.size()));
+    assert(r.size() <= x.size() + y.size());
+
+    // Karatsuba is profitable only at large sizes and only when r aliases neither x nor y.
+    // We require the destination to be wide enough for the full product (no truncation in
+    // the karatsuba path). Truncating multiplies (used by the pow2 reduction) always go
+    // through the schoolbook path -- they're already truncating which interacts poorly
+    // with Karatsuba's three-recursion structure.
+    const bool kara_eligible =
+        x.size() >= MUL_KARATSUBA_THRESHOLD &&
+        y.size() >= MUL_KARATSUBA_THRESHOLD &&
+        r.size() >= x.size() + y.size() &&
+        r.data() != x.data() && r.data() != y.data();
+
+    if (kara_eligible)
+        karatsuba::kmul_unequal(r, x, y);
+    else
+        mul_schoolbook(r, x, y);
 }
 
 /// Trims a little-endian word array to significant words.
@@ -362,10 +398,81 @@ template <>
     mul_amm_256(r, x, y, mod, mod_inv);
 }
 
+/// Karatsuba-Montgomery (SOS form) Almost Montgomery Multiplication.
+/// Computes r = x * y * R^-1 mod m where R = 2^(n*64).
+///
+/// Form: separate operand scanning (SOS): first compute the full 2n-word
+/// product t = x*y via Karatsuba, then perform Montgomery's word-at-a-time
+/// reduction on t in place. This separates the multiply (where Karatsuba's
+/// O(n^1.585) wins) from the reduction (still O(n²) but on smaller operands
+/// after each step). At n ≥ 16 limbs this beats CIOS schoolbook overall.
+///
+/// The "almost" relaxation lets us skip the final conditional subtraction
+/// when t/R < 2^((n+1)*64) — same contract as mul_amm above. Caller must
+/// produce a final reduction `if (!less(r, mod)) sub(r, mod)` when needed.
+///
+/// scratch: at least 2n words for the temporary product t[].
+void mul_amm_kara(std::span<uint64_t> r, std::span<const uint64_t> x,
+    std::span<const uint64_t> y, std::span<const uint64_t> mod, uint64_t mod_inv,
+    std::span<uint64_t> scratch) noexcept
+{
+    const size_t n = mod.size();
+    assert(r.size() == n);
+    assert(x.size() == n);
+    assert(y.size() == n);
+    assert(mod.back() != 0);
+    assert(scratch.size() >= 2 * n);
+
+    // Step 1: full product t = x * y via Karatsuba (2n words).
+    const auto t = scratch.first(2 * n);
+    karatsuba::kmul(t, x, y);
+
+    // Step 2: Montgomery word-at-a-time reduction.
+    // For i in 0..n: m_i = t[i] * mod_inv (mod 2^64); t += m_i * mod << i*64.
+    // After n iterations, the low n words of t are zero (mod R).
+    // We track a single carry-out word above the 2n-word product.
+    uint64_t hi_carry = 0;
+    for (size_t i = 0; i < n; ++i)
+    {
+        const uint64_t m = t[i] * mod_inv;
+
+        // t[i..i+n] += m * mod[]. The product is n+1 words wide; the low word
+        // exactly cancels t[i] (by construction of m), so we accumulate the
+        // upper n words plus the final carry.
+        // Use intx::umul + addc directly to avoid pulling in addmul's r==p alias check.
+        uint64_t carry = 0;
+        for (size_t j = 0; j < n; ++j)
+        {
+            const auto prod = intx::umul(mod[j], m) + t[i + j] + carry;
+            t[i + j] = prod[0];
+            carry = prod[1];
+        }
+        // Propagate the final carry through t[i+n], t[i+n+1], ... up to hi_carry.
+        bool c1 = false;
+        std::tie(t[i + n], c1) = intx::addc(t[i + n], carry, false);
+        // Propagate any further carry into hi_carry (only relevant on the last
+        // iteration; earlier iterations have plenty of headroom in t).
+        for (size_t k = i + n + 1; c1 && k < 2 * n; ++k)
+            std::tie(t[k], c1) = intx::addc(t[k], uint64_t{0}, c1);
+        if (c1)
+            hi_carry += 1;
+    }
+
+    // Step 3: result is t[n..2n]; possibly decrement by mod once if hi_carry set
+    // or if result >= mod (the "almost" relaxation lets us skip the >= test
+    // when the caller is the modexp loop, which folds it in at exit).
+    std::ranges::copy(t.subspan(n, n), r.begin());
+    if (hi_carry)
+        sub(r, mod);
+}
+
 /// Computes result[] = base[]^exp % mod[] for odd mod[] (mod[0] % 2 != 0).
 /// Scratch space required: 4n + 3*base.size() + 2 words, where n = mod.size().
+/// When use_karatsuba is true and n >= MUL_KARATSUBA_THRESHOLD (16 limbs =
+/// 1024 bits), the inner Montgomery multiplications go through mul_amm_kara
+/// (SOS form with Karatsuba multiply). Otherwise the original CIOS path runs.
 void modexp_odd(std::span<uint64_t> result, std::span<const uint64_t> base, Exponent exp,
-    std::span<const uint64_t> mod, std::span<uint64_t> scratch) noexcept
+    std::span<const uint64_t> mod, std::span<uint64_t> scratch, bool use_karatsuba = false) noexcept
 {
     assert(!mod.empty() && mod.back() != 0);    // mod must be trimmed.
     assert(!base.empty() && base.back() != 0);  // base must be trimmed.
@@ -418,9 +525,45 @@ void modexp_odd(std::span<uint64_t> result, std::span<const uint64_t> base, Expo
     };
 
     if (n == 4)
+    {
         exp_loop.operator()<4>();
+    }
+    else if (use_karatsuba && n >= MUL_KARATSUBA_THRESHOLD)
+    {
+        // Karatsuba-Montgomery (SOS) loop. Same square-and-multiply structure
+        // as the templated lambda above, but every mul_amm is replaced with
+        // mul_amm_kara which uses Karatsuba for the multiply phase.
+        // Allocate the SOS scratch (2n words) from rem_scratch's region; that
+        // region's lifetime ends after the to-Montgomery rem() call above, so
+        // it is reusable here.
+        const auto kara_scratch = scratch.subspan(2 * n + base.size(), 2 * n);
+
+        auto r_cur = result;
+        auto r_tmp = u.first(n);
+
+        std::ranges::copy(base_mont, r_cur.begin());
+        for (auto i = exp.bit_width() - 1; i != 0; --i)
+        {
+            mul_amm_kara(r_tmp, r_cur, r_cur, mod, mod_inv, kara_scratch);  // square
+            if (exp[i - 1])
+                mul_amm_kara(r_cur, r_tmp, base_mont, mod, mod_inv, kara_scratch);  // multiply
+            else
+                std::swap(r_cur, r_tmp);
+        }
+
+        // Convert from Montgomery form: multiply by 1.
+        std::ranges::fill(base_mont, uint64_t{0});
+        base_mont[0] = 1;
+        mul_amm_kara(r_tmp, r_cur, base_mont, mod, mod_inv, kara_scratch);
+        std::swap(r_cur, r_tmp);
+
+        if (r_cur.data() != result.data())
+            std::ranges::copy(r_cur, result.begin());
+    }
     else
+    {
         exp_loop.operator()<std::dynamic_extent>();
+    }
 
     // Reduce if necessary: AMM can produce mod <= r < 2*mod.
     if (!less(result, mod))
@@ -513,10 +656,10 @@ void modinv_pow2(
     }
 }
 
-}  // namespace
-
-void modexp(std::span<const uint8_t> base_bytes, std::span<const uint8_t> exp_bytes,
-    std::span<const uint8_t> mod_bytes, uint8_t* output) noexcept
+/// Shared body of modexp() and modexp_karatsuba(). Differs only in the
+/// use_karatsuba flag forwarded to modexp_odd().
+void modexp_impl(std::span<const uint8_t> base_bytes, std::span<const uint8_t> exp_bytes,
+    std::span<const uint8_t> mod_bytes, uint8_t* output, bool use_karatsuba) noexcept
 {
     const Exponent exp{exp_bytes};
 
@@ -585,7 +728,7 @@ void modexp(std::span<const uint8_t> base_bytes, std::span<const uint8_t> exp_by
         const auto result_pow2 = result.first(pow2_size);
 
         if (!odd_is_trivial) [[likely]]
-            modexp_odd(result_odd, base, exp, mod_odd, op_scratch);
+            modexp_odd(result_odd, base, exp, mod_odd, op_scratch, use_karatsuba);
 
         if (!pow2_is_trivial)
             modexp_pow2(result_pow2, base, exp, mod_tz, op_scratch);
@@ -606,4 +749,19 @@ void modexp(std::span<const uint8_t> base_bytes, std::span<const uint8_t> exp_by
 
     store(std::span{output, mod_bytes.size()}, result);
 }
+
+}  // namespace
+
+void modexp(std::span<const uint8_t> base_bytes, std::span<const uint8_t> exp_bytes,
+    std::span<const uint8_t> mod_bytes, uint8_t* output) noexcept
+{
+    modexp_impl(base_bytes, exp_bytes, mod_bytes, output, /*use_karatsuba=*/false);
+}
+
+void modexp_karatsuba(std::span<const uint8_t> base_bytes, std::span<const uint8_t> exp_bytes,
+    std::span<const uint8_t> mod_bytes, uint8_t* output) noexcept
+{
+    modexp_impl(base_bytes, exp_bytes, mod_bytes, output, /*use_karatsuba=*/true);
+}
+
 }  // namespace cevm::crypto

@@ -16,8 +16,8 @@
 //   * NTT path uses ntt.hpp's Cyclone-FFT context (Mont-form twiddles
 //     internally) but exposes only standard-form values at the boundary.
 
-#ifndef KINET_CRYPTO_POLY_MUL_HPP
-#define KINET_CRYPTO_POLY_MUL_HPP
+#ifndef CRYPTO_POLY_MUL_HPP
+#define CRYPTO_POLY_MUL_HPP
 
 #include <cstdint>
 
@@ -43,4 +43,4 @@ bool multiply_ntt(uint64_t* result,
 
 }  // namespace kinet::crypto::poly_mul
 
-#endif  // KINET_CRYPTO_POLY_MUL_HPP
+#endif  // CRYPTO_POLY_MUL_HPP

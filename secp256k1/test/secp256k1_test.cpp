@@ -10,7 +10,7 @@
 //      the field arithmetic.
 //   3. Edge cases: r=0, s=0, v invalid, high-S, point at infinity.
 //
-// No external dependencies. Built into the kinet_crypto_secp256k1 test target.
+// No external dependencies. Built into the secp256k1_cpu test target.
 
 #include "kinet/crypto/secp256k1.h"
 #include "../cpp/field.hpp"

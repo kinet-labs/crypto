@@ -11,7 +11,7 @@
 // caller fills a flat byte arena and per-input (offset, length) descriptors;
 // outputs are 64-byte stride.
 //
-// When KINET_CRYPTO_ENABLE_CUDA=ON this file is fed to nvcc and exposes
+// When CRYPTO_ENABLE_CUDA=ON this file is fed to nvcc and exposes
 // `blake2b_jobs` as a real __global__ kernel. When CUDA is off (default) the
 // same file compiles as host C++ via the `__CUDA_ARCH__` shim and exposes
 // `blake2b_batch_cuda_host` so the determinism test still runs 100/100 on

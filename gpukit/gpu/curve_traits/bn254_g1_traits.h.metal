@@ -1,0 +1,20 @@
+// BN254 G1 curve traits for the multi_pippenger Metal kernel.
+//
+//   p = 21888242871839275222246405745257275088696311157297823662689037894645226208583
+//   y^2 = x^3 + 3
+//
+// Constants mirror cpp/bn254/cpp/bn254_fp.hpp.
+
+#pragma once
+
+constant uint64_t MP_P[4] = {
+    0x3C208C16D87CFD47UL, 0x97816A916871CA8DUL,
+    0xB85045B68181585DUL, 0x30644E72E131A029UL
+};
+constant uint64_t MP_P_INV = 0x87D20782E4866389UL;
+constant uint64_t MP_R2[4] = {
+    0xF32CFC5B538AFA89UL, 0xB5E71911D44501FBUL,
+    0x47AB1EFF0A417FF6UL, 0x06D89F71CAB8351FUL
+};
+constant int MP_FIELD_LIMBS = 4;
+constant int MP_BITS = 254;

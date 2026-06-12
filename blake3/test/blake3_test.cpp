@@ -4,7 +4,7 @@
 // official cases across the three modes (hash, keyed_hash, derive_key) and
 // the XOF output.
 //
-// The KAT path may be overridden via the KINET_CRYPTO_BLAKE3_VECTORS env var
+// The KAT path may be overridden via the CRYPTO_BLAKE3_VECTORS env var
 // (used by CTest fixture).
 
 #include "../cpp/blake3.hpp"
@@ -135,7 +135,7 @@ static void check_eq(const char* name, const uint8_t* got, size_t got_n,
 int main() {
     std::fprintf(stdout, "=== blake3 KAT (BLAKE3 spec, test_vectors.json) ===\n");
 
-    const char* env = std::getenv("KINET_CRYPTO_BLAKE3_VECTORS");
+    const char* env = std::getenv("CRYPTO_BLAKE3_VECTORS");
     std::string path = env ? env :
         "blake3/test/vectors/blake3_test_vectors.json";
     std::string raw = slurp(path);

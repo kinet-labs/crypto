@@ -24,8 +24,8 @@
 //
 // =============================================================================
 
-#ifndef KINET_CRYPTO_BANDERWAGON_HPP
-#define KINET_CRYPTO_BANDERWAGON_HPP
+#ifndef CRYPTO_BANDERWAGON_HPP
+#define CRYPTO_BANDERWAGON_HPP
 
 #include <array>
 #include <cstdint>
@@ -272,4 +272,4 @@ bool subgroup_check_x(const Fp& x);
 
 }  // namespace kinet::crypto::banderwagon
 
-#endif  // KINET_CRYPTO_BANDERWAGON_HPP
+#endif  // CRYPTO_BANDERWAGON_HPP

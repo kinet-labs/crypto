@@ -1,32 +1,28 @@
 # secp256r1 — NIST P-256 curve (RIP-7212 / EIP-7951 precompile).
 #
-# CPU body (cpp/secp256r1.cpp) transitively requires:
-#   * intx (vendored at crypto/deps/intx)
-#   * evmmax::ModArith (vendored at crypto/deps/evmmax)
-#   * cevm support headers ecc.hpp + hash_types.h (sourced via
-#     KINET_CRYPTO_CEVM_SUPPORT_DIR; pre-existing cevm-internal headers
-#     not yet rehomed into crypto/<alg>/cpp/).
+# CPU body (cpp/secp256r1.cpp) requires:
+#   * intx                          (vendored at crypto/deps/intx)
+#   * evmmax::ModArith              (vendored at crypto/deps/evmmax)
+#   * cevm_support headers          (first-party, cpp/cevm_support/)
+#   * sha256_cpu                    (in-tree SHA-256, used by the C-ABI shim)
 #
-# When the deps + support headers are present, the cpp body links into
-# secp256r1_cpu. Otherwise we fall back to the NOTIMPL c-abi stub.
+# Wire is unconditional: every supported host yields a real verify result
+# (CRYPTO_OK / CRYPTO_ERR_VERIFY). No NOTIMPL path on this algorithm.
+
 include(KinetAlgorithm)
 
-if(KINET_CRYPTO_CEVM_SUPPORT_AVAILABLE)
-    kinet_add_algorithm(
-        NAME    secp256r1
-        SOURCES cpp/secp256r1.cpp
-        HEADERS cpp/secp256r1.hpp
-        CABI    c-abi/c_secp256r1.cpp
-    )
-    target_include_directories(secp256r1_cpu PRIVATE
-        ${KINET_CRYPTO_CEVM_SUPPORT_DIR}
-    )
-    target_link_libraries(secp256r1_cpu PRIVATE intx::intx evmmax::evmmax)
-else()
-    kinet_add_algorithm(
-        NAME    secp256r1
-        SOURCES c-abi/c_secp256r1.cpp
-        HEADERS cpp/secp256r1.hpp
-        CABI    c-abi/c_secp256r1.cpp
-    )
-endif()
+kinet_add_algorithm(
+    NAME    secp256r1
+    SOURCES cpp/secp256r1.cpp
+    HEADERS cpp/secp256r1.hpp
+    CABI    c-abi/c_secp256r1.cpp
+)
+
+target_link_libraries(secp256r1_cpu PUBLIC
+    intx::intx
+    evmmax::evmmax
+)
+
+# C-ABI shim calls cevm::crypto::sha256 directly — link the CPU body
+# (no umbrella, no OpenSSL). sha256_cpu PUBLIC-exports cpp/sha256.hpp.
+target_link_libraries(secp256r1 PUBLIC sha256_cpu)

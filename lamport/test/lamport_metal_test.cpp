@@ -9,8 +9,6 @@
 // signatures so the expected results vector contains both 1s (valid) and 0s
 // (invalid). Both CPU and GPU paths must agree.
 //
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-// Copyright (C) 2025-2026 Kinet Industries Inc.
 // =============================================================================
 
 #include "../cpp/lamport.hpp"
@@ -52,10 +50,10 @@ void make_msg(uint32_t i, uint8_t out[32]) {
 }  // namespace
 
 int main() {
-    const char* metallib = std::getenv("KINET_CRYPTO_LAMPORT_METALLIB");
+    const char* metallib = std::getenv("CRYPTO_LAMPORT_METALLIB");
     if (!metallib) {
         std::fprintf(stderr, "SKIP lamport_metal_test "
-                             "(KINET_CRYPTO_LAMPORT_METALLIB unset)\n");
+                             "(CRYPTO_LAMPORT_METALLIB unset)\n");
         return 0;
     }
 

@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BSD-3-Clause-Eco
+//
 // ipa/c-abi/c_ipa.cpp -- C ABI for the Banderwagon IPA prover/verifier.
 
 #include "crypto.h"
@@ -6,20 +8,59 @@
 #include <cstring>
 #include <new>
 
+// Forward decls so the legacy ipa_commit / ipa_verify helpers below can
+// reach the lazy Config + the modern check_proof function.
+static kinet::crypto::ipa::Config* g_cfg = nullptr;
+static kinet::crypto::ipa::Config* get_cfg();
+
+extern "C" int ipa_check_proof(const uint8_t commitment_be[32],
+                               const uint8_t eval_le[32],
+                               const uint8_t y_le[32],
+                               const uint8_t proof_in[kinet::crypto::ipa::IPAProof::kSerializedSize]);
+
 extern "C" {
 
-int ipa_commit(const uint8_t* coeffs, size_t n, uint8_t commit[48]) {
-    if (commit == nullptr) return CRYPTO_ERR_INPUT;
-    if (n > 0 && coeffs == nullptr) return CRYPTO_ERR_INPUT;
-    return CRYPTO_ERR_NOTIMPL;
-}
-int ipa_verify(const uint8_t commit[48], const uint8_t* proof, size_t proof_len) {
-    if (commit == nullptr) return CRYPTO_ERR_INPUT;
-    if (proof_len > 0 && proof == nullptr) return CRYPTO_ERR_INPUT;
-    return CRYPTO_ERR_NOTIMPL;
+// Legacy 48-byte commit / variable-length-proof entry points map onto the
+// modern Banderwagon Element commit (32-byte canonical) padded to 48 bytes
+// (16 zero pad MSB) and through the proof system in ipa_check_proof.
+//
+// Padded layout: [16 zero bytes] || [32-byte big-endian Element compressed].
+// This preserves wire-format space for callers that allocate 48-byte buffers
+// for KZG-shaped commitments while routing real work through the canonical
+// 32-byte Banderwagon path.
+
+int ipa_commit(const uint8_t* coeffs, size_t n, uint8_t commit_out[48]) {
+    namespace ipa = kinet::crypto::ipa;
+    if (commit_out == nullptr) return CRYPTO_ERR_INPUT;
+    if (n == 0 || coeffs == nullptr) return CRYPTO_ERR_INPUT;
+    if (n != ipa::kVectorLength) return CRYPTO_ERR_LENGTH;
+
+    auto* cfg = get_cfg();
+    if (cfg == nullptr) return CRYPTO_ERR_INTERNAL;
+
+    ipa::Fr a[ipa::kVectorLength];
+    for (size_t i = 0; i < ipa::kVectorLength; ++i) {
+        if (!ipa::Fr::from_bytes_le(coeffs + i * 32, a[i])) return CRYPTO_ERR_INPUT;
+    }
+    ipa::Element c = ipa::commit(*cfg, a);
+    std::memset(commit_out, 0, 16);
+    c.serialize_compressed(commit_out + 16);
+    return CRYPTO_OK;
 }
 
-static kinet::crypto::ipa::Config* g_cfg = nullptr;
+int ipa_verify(const uint8_t commit_in[48], const uint8_t* proof, size_t proof_len) {
+    if (commit_in == nullptr) return CRYPTO_ERR_INPUT;
+    if (proof_len == 0 || proof == nullptr) return CRYPTO_ERR_INPUT;
+    if (proof_len != kinet::crypto::ipa::IPAProof::kSerializedSize + 64) {
+        return CRYPTO_ERR_LENGTH;
+    }
+    for (int i = 0; i < 16; ++i) {
+        if (commit_in[i] != 0) return CRYPTO_ERR_INPUT;
+    }
+    return ipa_check_proof(commit_in + 16, proof, proof + 32, proof + 64);
+}
+
+}  // extern "C"
 
 static kinet::crypto::ipa::Config* get_cfg() {
     if (g_cfg == nullptr) {
@@ -30,6 +71,8 @@ static kinet::crypto::ipa::Config* get_cfg() {
     }
     return g_cfg;
 }
+
+extern "C" {
 
 int ipa_config_init(void) {
     return (get_cfg() != nullptr) ? CRYPTO_OK : CRYPTO_ERR_INTERNAL;

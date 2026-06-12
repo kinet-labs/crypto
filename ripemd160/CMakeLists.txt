@@ -26,9 +26,9 @@ endif()
 
 # =============================================================================
 # CUDA driver (host TU + .cu kernel). Build modes:
-#   * KINET_CRYPTO_ENABLE_CUDA=ON  -> compile ripemd160.cu via nvcc; link to a
+#   * CRYPTO_ENABLE_CUDA=ON  -> compile ripemd160.cu via nvcc; link to a
 #                                   real driver that talks to the CUDA runtime.
-#   * KINET_CRYPTO_ENABLE_CUDA=OFF -> compile only the host shim in stub mode so
+#   * CRYPTO_ENABLE_CUDA=OFF -> compile only the host shim in stub mode so
 #                                   the test harness can call the C ABI on
 #                                   Apple/non-CUDA hosts (returns 0
 #                                   "available?" -> false; skips compare).
@@ -40,7 +40,7 @@ target_include_directories(ripemd160_batch_cuda PUBLIC
 target_compile_features(ripemd160_batch_cuda PUBLIC cxx_std_20)
 set_target_properties(ripemd160_batch_cuda PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-if(KINET_CRYPTO_ENABLE_CUDA)
+if(CRYPTO_ENABLE_CUDA)
     target_compile_definitions(ripemd160_batch_cuda PRIVATE KINET_RIPEMD160_HAVE_CUDA=1)
     target_sources(ripemd160_batch_cuda PRIVATE gpu/cuda/ripemd160.cu)
     set_source_files_properties(gpu/cuda/ripemd160.cu PROPERTIES LANGUAGE CUDA)
@@ -70,7 +70,7 @@ target_include_directories(ripemd160_batch_wgpu
 target_compile_features(ripemd160_batch_wgpu PUBLIC cxx_std_20)
 set_target_properties(ripemd160_batch_wgpu PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-if(KINET_CRYPTO_ENABLE_WGSL)
+if(CRYPTO_ENABLE_WGSL)
     find_path(_RIPEMD160_WGPU_INCLUDE webgpu.h
         HINTS /opt/homebrew/include /usr/local/include /usr/include)
     find_library(_RIPEMD160_WGPU_LIB NAMES wgpu_native wgpu

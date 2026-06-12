@@ -34,8 +34,8 @@
 //   R^2 mod Q  = 932051910       (used by to_mont)
 //   -Q^-1 mod R= 998244351       (used by REDC)
 
-#ifndef KINET_CRYPTO_NTT_HPP
-#define KINET_CRYPTO_NTT_HPP
+#ifndef CRYPTO_NTT_HPP
+#define CRYPTO_NTT_HPP
 
 #include <cstdint>
 #include <vector>
@@ -94,4 +94,4 @@ uint64_t pow_mod(uint64_t base, uint64_t exp, uint64_t q);
 
 }  // namespace kinet::crypto::ntt
 
-#endif  // KINET_CRYPTO_NTT_HPP
+#endif  // CRYPTO_NTT_HPP

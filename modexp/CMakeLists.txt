@@ -1,4 +1,5 @@
 # modexp - EVM big-int modular exponentiation (EIP-198) + evm256_{add,mul}mod
+# + Karatsuba multiplication for RSA-4096-class moduli.
 include(KinetAlgorithm)
 
 kinet_add_algorithm(
@@ -7,7 +8,8 @@ kinet_add_algorithm(
         c-abi/c_modexp.cpp
         cpp/modexp.cpp
         cpp/mulmod.cpp
-    HEADERS cpp/modexp.hpp cpp/mulmod.hpp
+        cpp/karatsuba.cpp
+    HEADERS cpp/modexp.hpp cpp/mulmod.hpp cpp/karatsuba.hpp
     CABI    c-abi/c_modexp.cpp
 )
 

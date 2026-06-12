@@ -5,8 +5,6 @@
 // High-performance BLAKE3 hashing with GPU parallelization.
 // Based on the official BLAKE3 specification.
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>

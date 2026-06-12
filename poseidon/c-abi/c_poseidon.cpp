@@ -4,17 +4,55 @@
 // t=2 Poseidon2 permutation in Merkle-Damgard mode (matches gnark-crypto's
 // NewMerkleDamgardHasher) and returns a 32-byte digest.
 //
-// poseidon_goldilocks remains NOTIMPL until the Goldilocks variant lands.
+// poseidon_goldilocks absorbs a sequence of 32-byte blocks (4 big-endian
+// 64-bit Goldilocks lanes per block) through the t=8 Poseidon2 permutation
+// in Merkle-Damgard mode (all-zero IV, 8-lane state, 4 lanes absorbed per
+// step into the top half of the state) and returns the top 4 lanes (32
+// bytes) as the digest. Algorithm + constants match horizen-labs/poseidon2:
+//   plain_implementations/src/poseidon2/poseidon2_instance_goldilocks.rs
+// (POSEIDON2_GOLDILOCKS_8_PARAMS) byte-for-byte. KAT vectors generated from
+// the upstream Rust crate live in test/poseidon_goldilocks_test.cpp.
 
 #include "crypto.h"
 #include "../cpp/poseidon.hpp"
+#include "../cpp/fr_bn254.hpp"
+#include "../cpp/poseidon_goldilocks.hpp"
+#include "../cpp/goldilocks.hpp"
 
 #include <cstring>
 
 extern "C" int poseidon_goldilocks(const uint8_t* in, size_t in_len, uint8_t out[32]) {
     if (out == nullptr) return CRYPTO_ERR_INPUT;
     if (in_len > 0 && in == nullptr) return CRYPTO_ERR_INPUT;
-    return CRYPTO_ERR_NOTIMPL;
+    // Block size is 4 lanes * 8 bytes = 32 bytes (the public absorb width;
+    // matches the digest width). The internal state is 8 lanes — absorbed
+    // input fills the top 4 lanes, the bottom 4 lanes act as capacity.
+    if (in_len % 32 != 0) return CRYPTO_ERR_LENGTH;
+
+    using namespace kinet::crypto::poseidon;
+
+    uint64_t state[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+    const size_t blocks = in_len / 32;
+
+    for (size_t b = 0; b < blocks; ++b) {
+        uint64_t lanes[4];
+        for (int i = 0; i < 4; ++i) {
+            if (!p2g::bytes_to_lane_canonical(in + b * 32 + i * 8, lanes[i])) {
+                return CRYPTO_ERR_INPUT;
+            }
+        }
+        // Absorb into top half of state (state[0..3]). Bottom half is capacity.
+        for (int i = 0; i < 4; ++i) {
+            state[i] = gf::add(state[i], lanes[i]);
+        }
+        p2g::permutation_t8(state);
+    }
+
+    // Squeeze: emit top 4 lanes as 32-byte big-endian digest.
+    for (int i = 0; i < 4; ++i) {
+        p2g::lane_to_bytes(state[i], out + i * 8);
+    }
+    return CRYPTO_OK;
 }
 
 extern "C" int poseidon_bn254(const uint8_t* in, size_t in_len, uint8_t out[32]) {

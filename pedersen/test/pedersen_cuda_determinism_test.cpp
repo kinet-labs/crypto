@@ -3,7 +3,7 @@
 // (pedersen/test/tools/metal_kat/main.go), so byte-equal results imply Metal
 // <-> CUDA <-> Go canonical equivalence.
 //
-// Skipped silently when KINET_CRYPTO_PEDERSEN_KAT is unset, or when the CUDA
+// Skipped silently when CRYPTO_PEDERSEN_KAT is unset, or when the CUDA
 // runtime reports no available device, allowing the test to register on
 // hosts without a GPU.
 
@@ -47,9 +47,9 @@ int main() {
         return 0;
     }
 
-    const char* kat_path = std::getenv("KINET_CRYPTO_PEDERSEN_KAT");
+    const char* kat_path = std::getenv("CRYPTO_PEDERSEN_KAT");
     if (!kat_path) {
-        std::fprintf(stdout, "(skip: KINET_CRYPTO_PEDERSEN_KAT unset)\n");
+        std::fprintf(stdout, "(skip: CRYPTO_PEDERSEN_KAT unset)\n");
         std::fprintf(stdout, "=== ALL TESTS PASSED (GPU skipped) ===\n");
         return 0;
     }

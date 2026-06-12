@@ -33,7 +33,7 @@ kinet_add_algorithm(
 # Batched BLAKE3 Metal driver (one thread per input, byte-equal to the CPU
 # body). Compiled separately from the legacy blake3_driver.mm/blake3.metal,
 # which remain for backwards compatibility but are not on the canonical path.
-if(APPLE AND KINET_CRYPTO_ENABLE_METAL)
+if(APPLE AND CRYPTO_ENABLE_METAL)
     add_library(blake3_batch_metal STATIC
         gpu/metal/blake3_batch_driver.mm)
     target_compile_features(blake3_batch_metal PUBLIC cxx_std_20)

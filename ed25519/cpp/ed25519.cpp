@@ -23,6 +23,32 @@
 #define ED25519_NO_INLINE_ASM 1
 #define ED25519_SUFFIX _donna
 
+// ----- ED25519_FN macro replicated for the kinet shim prelude -----------------
+// ed25519.c defines ED25519_FN at the top of its TU. Our shim relies on it
+// (so that `ED25519_FN(ed25519_randombytes_unsafe)` becomes
+// `ed25519_randombytes_unsafe_donna`). Replicate the macro here so the shim
+// can be included BEFORE ed25519.c. We #undef before ed25519.c so its own
+// re-definition is not a redefinition diagnostic.
+#define ED25519_FN3(fn,suffix) fn##suffix
+#define ED25519_FN2(fn,suffix) ED25519_FN3(fn,suffix)
+#define ED25519_FN(fn)         ED25519_FN2(fn,ED25519_SUFFIX)
+
+// ----- Kinet shim prelude -----------------------------------------------------
+// ed25519.c uses quote-includes which the C preprocessor resolves relative to
+// the file containing the #include directive (the fetched ed25519-donna
+// source dir), NOT this cpp/ dir. So the include-path-order trick alone does
+// not redirect the upstream stubs to the kinet shims; we must include them
+// directly here BEFORE pulling in ed25519.c. The shims have header guards,
+// so the later upstream `#include "ed25519-hash-custom.h"` from
+// `ed25519-hash.h` is a no-op for ours and a harmless re-include of the
+// upstream comment-only stub.
+#include "ed25519-hash-custom.h"
+#include "ed25519-randombytes-custom.h"
+
+#undef ED25519_FN
+#undef ED25519_FN2
+#undef ED25519_FN3
+
 // ----- Upstream translation unit -------------------------------------------
 // ed25519.c is plain C; bring it into this C++ TU via include. The wrapping
 // extern "C" gives the symbols C linkage even though the file is compiled

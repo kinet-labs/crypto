@@ -26,8 +26,10 @@ void run(std::mt19937_64& rng, size_t n) {
     }
     int rcc = gpukit_merkle_root_cuda(leaves.data(), n, gpu_root);
     if (rcc == GPUKIT_ERR_NOTIMPL) ++g_cuda_skip;
+#if CRYPTO_ENABLE_WGSL
     int rcw = gpukit_merkle_root_wgsl(leaves.data(), n, gpu_root);
     if (rcw == GPUKIT_ERR_NOTIMPL) ++g_wgsl_skip;
+#endif
 }
 
 void check_known() {

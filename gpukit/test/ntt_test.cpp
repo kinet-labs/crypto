@@ -53,8 +53,10 @@ void test_kyber(std::mt19937_64& rng) {
         if (rcm == GPUKIT_ERR_NOTIMPL) ++g_metal_skip;
         int rcc = gpukit_ntt_kyber_forward_cuda(tmp.data(), n);
         if (rcc == GPUKIT_ERR_NOTIMPL) ++g_cuda_skip;
+#if CRYPTO_ENABLE_WGSL
         int rcw = gpukit_ntt_kyber_forward_wgsl(tmp.data(), n);
         if (rcw == GPUKIT_ERR_NOTIMPL) ++g_wgsl_skip;
+#endif
     }
 }
 

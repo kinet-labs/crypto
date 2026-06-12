@@ -14,8 +14,6 @@
 // - CUDA (Linux/NVIDIA via MLX)
 // - Optimized CPU fallback
 //
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #pragma once
 #include <stdint.h>

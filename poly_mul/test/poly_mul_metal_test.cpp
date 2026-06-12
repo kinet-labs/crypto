@@ -31,9 +31,9 @@ static std::vector<uint64_t> lcg(uint64_t seed, size_t n) {
 }
 
 int main() {
-    const char* lib_path = std::getenv("KINET_CRYPTO_POLY_MUL_METALLIB");
+    const char* lib_path = std::getenv("CRYPTO_POLY_MUL_METALLIB");
     if (!lib_path) {
-        std::fprintf(stderr, "KINET_CRYPTO_POLY_MUL_METALLIB not set; skipping\n");
+        std::fprintf(stderr, "CRYPTO_POLY_MUL_METALLIB not set; skipping\n");
         return 0;
     }
 

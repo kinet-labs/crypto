@@ -1,6 +1,3 @@
-// Copyright (C) 2020-2026, Kinet Industries Inc. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Metal kernel for batched polynomial multiplication over Q = 998244353.
 // Byte-equal to kinet-labs/crypto/poly_mul.MulSchoolbook for n <= 1024.
 //

@@ -1,29 +1,27 @@
 // =============================================================================
 // pedersen - C ABI implementation.
 //
-// Two surfaces coexist here:
+// Surface:
 //
-//   1. Legacy single-scalar form (declared in kinet_crypto.h, never wired):
-//        pedersen_commit(values, n, blinding[32], commit[33])
-//        pedersen_verify(commit[33], values, n, blinding[32])
-//      These return CRYPTO_ERR_NOTIMPL until a caller appears.
+//   pedersen_generators_from_seed(seed[32], n, out_g_xy, out_h_xy)
+//       -> writes 64*n bytes of G_basis (each: x_be32 || y_be32) and
+//          64 bytes of H (x_be32 || y_be32). Coordinates emitted in
+//          NON-Montgomery form (raw 32-byte big-endian Fp values,
+//          identical to gnark-crypto's bn254.G1Affine.X.Bytes()).
 //
-//   2. New vector commitment (this PR):
-//        pedersen_generators_from_seed(seed[32], n, out_g_xy, out_h_xy)
-//            -> writes 64*n bytes of G_basis (each: x_be32 || y_be32) and
-//               64 bytes of H (x_be32 || y_be32). Coordinates emitted in
-//               NON-Montgomery form (raw 32-byte big-endian Fp values,
-//               identical to gnark-crypto's bn254.G1Affine.X.Bytes()).
+//   pedersen_vector_commit(scalars[n*32], n, blinding[32],
+//                          gens_g_xy[n*64], gens_h_xy[64], out_xy[64])
+//       -> writes 64 bytes of commitment (x_be32 || y_be32).
 //
-//        pedersen_vector_commit(scalars[n*32], n, blinding[32],
-//                               gens_g_xy[n*64], gens_h_xy[64], out_xy[64])
-//            -> writes 64 bytes of commitment (x_be32 || y_be32).
+//   pedersen_vector_verify_open(commitment_xy[64], scalars[n*32], n,
+//                               blinding[32], gens_g_xy[n*64],
+//                               gens_h_xy[64])
+//       -> returns CRYPTO_OK iff Commit matches commitment,
+//          CRYPTO_ERR_INPUT otherwise.
 //
-//        pedersen_vector_verify_open(commitment_xy[64], scalars[n*32], n,
-//                                    blinding[32], gens_g_xy[n*64],
-//                                    gens_h_xy[64])
-//            -> returns CRYPTO_OK iff Commit matches commitment,
-//               CRYPTO_ERR_INPUT otherwise.
+//   pedersen_tree_commit(scalars, blinding[32], gens_g_xy, gens_h_xy[64],
+//                        out_xy[64])
+//       -> single-shot vector commit at the fixed Verkle width N = 256.
 //
 // All inputs and outputs are 32-byte big-endian (raw Fp / Fr); the C++ core
 // in pedersen/cpp/ keeps point coordinates in Montgomery form internally.
@@ -40,22 +38,6 @@
 
 namespace lc = kinet::crypto::bn254;
 namespace lp = kinet::crypto::pedersen;
-
-// -------------------------- Legacy single-scalar form -----------------------
-
-extern "C" int pedersen_commit(const uint8_t* values, size_t n,
-                               const uint8_t blinding[32], uint8_t commit[33]) {
-    if (commit == nullptr || blinding == nullptr) return CRYPTO_ERR_INPUT;
-    if (n > 0 && values == nullptr) return CRYPTO_ERR_INPUT;
-    return CRYPTO_ERR_NOTIMPL;
-}
-
-extern "C" int pedersen_verify(const uint8_t commit[33], const uint8_t* values,
-                               size_t n, const uint8_t blinding[32]) {
-    if (commit == nullptr || blinding == nullptr) return CRYPTO_ERR_INPUT;
-    if (n > 0 && values == nullptr) return CRYPTO_ERR_INPUT;
-    return CRYPTO_ERR_NOTIMPL;
-}
 
 // ----------------------------- Vector commitment ---------------------------
 
@@ -190,4 +172,29 @@ extern "C" int pedersen_vector_verify_open(const uint8_t commitment_xy[64],
     const bool ok = lp::verify_open(
         c, std::span<const lc::U256>{sc.data(), sc.size()}, r, gens);
     return ok ? CRYPTO_OK : CRYPTO_ERR_INPUT;
+}
+
+// -------------------------- Tree-reduce vector commit ----------------------
+//
+// Fixed at the Verkle node width N = PEDERSEN_TREE_WIDTH (256). Routes through
+// the same canonical CPU path as pedersen_vector_commit; the GPU back-ends
+// (Metal / CUDA / WGSL) implement an equivalent threadgroup-cooperative
+// tree-reduction kernel that this C-ABI will call when wired by the GPU
+// dispatcher. Output is byte-equal to pedersen_vector_commit at n = 256.
+
+#ifndef PEDERSEN_TREE_WIDTH
+#define PEDERSEN_TREE_WIDTH 256u
+#endif
+
+extern "C" int pedersen_tree_commit(const uint8_t* scalars,
+                                    const uint8_t blinding[32],
+                                    const uint8_t* gens_g_xy,
+                                    const uint8_t gens_h_xy[64],
+                                    uint8_t out_xy[64]) {
+    if (scalars == nullptr || blinding == nullptr) return CRYPTO_ERR_INPUT;
+    if (gens_g_xy == nullptr || gens_h_xy == nullptr || out_xy == nullptr)
+        return CRYPTO_ERR_INPUT;
+
+    return pedersen_vector_commit(scalars, (size_t)PEDERSEN_TREE_WIDTH,
+                                  blinding, gens_g_xy, gens_h_xy, out_xy);
 }

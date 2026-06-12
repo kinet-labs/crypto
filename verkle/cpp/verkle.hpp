@@ -1,6 +1,3 @@
-// Copyright (C) 2025-2026, Kinet Industries Inc. All rights reserved.
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-//
 // Verkle: tree commitments + multiproof verification.
 //
 // Reference: github.com/kinet-labs/crypto/verkle (Go) which re-exports

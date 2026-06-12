@@ -8,7 +8,7 @@
 //   3. 5 batch MSMs (sizes 64, 256, 1024, varying batch widths) :
 //      assert CPU MSM == Metal MSM byte-equal.
 //
-// Skipped silently when KINET_CRYPTO_BANDERWAGON_METALLIB is unset (test still
+// Skipped silently when CRYPTO_BANDERWAGON_METALLIB is unset (test still
 // registers on non-Apple hosts).
 
 #include "../cpp/element.hpp"
@@ -94,9 +94,9 @@ int main() {
     int failures = 0;
 
 #if __APPLE__
-    const char* metallib = std::getenv("KINET_CRYPTO_BANDERWAGON_METALLIB");
+    const char* metallib = std::getenv("CRYPTO_BANDERWAGON_METALLIB");
     if (!metallib) {
-        std::fprintf(stdout, "(skip GPU equality: KINET_CRYPTO_BANDERWAGON_METALLIB unset)\n");
+        std::fprintf(stdout, "(skip GPU equality: CRYPTO_BANDERWAGON_METALLIB unset)\n");
         std::fprintf(stdout, "=== ALL TESTS PASSED (GPU skipped) ===\n");
         return 0;
     }

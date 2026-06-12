@@ -194,10 +194,10 @@ int main() {
     std::fprintf(stdout, "=== mlkem Metal test suite ===\n");
 
 #if __APPLE__
-    const char* metallib = std::getenv("KINET_CRYPTO_MLKEM_METALLIB");
+    const char* metallib = std::getenv("CRYPTO_MLKEM_METALLIB");
     if (!metallib) {
         std::fprintf(stdout,
-                     "(skip: KINET_CRYPTO_MLKEM_METALLIB unset)\n"
+                     "(skip: CRYPTO_MLKEM_METALLIB unset)\n"
                      "=== ALL TESTS PASSED (GPU skipped) ===\n");
         return 0;
     }

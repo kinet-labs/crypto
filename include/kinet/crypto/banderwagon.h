@@ -14,8 +14,8 @@
 //
 // =============================================================================
 
-#ifndef KINET_CRYPTO_BANDERWAGON_H
-#define KINET_CRYPTO_BANDERWAGON_H
+#ifndef CRYPTO_BANDERWAGON_H
+#define CRYPTO_BANDERWAGON_H
 
 #include <stddef.h>
 #include <stdint.h>
@@ -69,4 +69,4 @@ int banderwagon_equal(const uint8_t a[64], const uint8_t b[64]);
 }
 #endif
 
-#endif  // KINET_CRYPTO_BANDERWAGON_H
+#endif  // CRYPTO_BANDERWAGON_H

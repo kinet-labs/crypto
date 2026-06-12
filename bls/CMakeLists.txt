@@ -531,6 +531,148 @@ if(APPLE)
             add_custom_target(bls-fused-test DEPENDS bls_fused_test)
 
             message(STATUS "[bls-fused] enabled — fused batch verifier")
+
+            # =========================================================
+            # Combined-pair Miller-loop kernel pack — Metal/CUDA/WGSL.
+            #
+            # ONE driver call dispatches the existing per-bit Miller
+            # kernels over k pairs as N=k workitems, then collapses the
+            # k Fp12 outputs to a single product via canonical pairwise
+            # tree reduction.  Output is the pre-final-exponentiation
+            # Fp12 product, byte-equal the CPU reference.
+            #
+            # The Metal driver loads the existing bls_pairing.metallib
+            # (which now bundles bls_combined_miller.metal alongside
+            # bls_miller / bls_final_exp / bls_pairing — see updated
+            # BLS_PAIR_METAL_FILES below).
+            # =========================================================
+
+            # ---- Add the combined-miller .metal source to the pairing metallib ----
+            # The pairing metallib already aggregates miller + final_exp + pairing;
+            # we add bls_combined_miller.metal so the runtime loader finds the
+            # k_combined_miller_reduce kernel alongside the per-bit Miller kernels.
+            set(BLS_CMIL_AIR "${CMAKE_CURRENT_BINARY_DIR}/bls_combined_miller_pair.air")
+            add_custom_command(
+                OUTPUT "${BLS_CMIL_AIR}"
+                COMMAND ${XCRUN} -sdk macosx metal -O3 -ffast-math
+                        -I "${BLS_METAL_DIR}"
+                        -c "${BLS_METAL_DIR}/bls_combined_miller.metal"
+                        -o "${BLS_CMIL_AIR}"
+                DEPENDS "${BLS_METAL_DIR}/bls_combined_miller.metal"
+                        "${BLS_METAL_DIR}/bls_fp12.metal"
+                        "${BLS_METAL_DIR}/bls_fp6.metal"
+                        "${BLS_METAL_DIR}/bls_fp2.metal"
+                        "${BLS_METAL_DIR}/bls_fp_ops.h.metal"
+                COMMENT "metal -c bls_combined_miller.metal (pair build)")
+
+            # Combined metallib bundling all pairing kernels + the new
+            # combined-miller reduce kernel.  The combined-miller driver
+            # loads this exact metallib (env var BLS_COMBINED_MILLER_METALLIB).
+            set(BLS_COMBINED_METALLIB "${CMAKE_CURRENT_BINARY_DIR}/bls_combined_miller.metallib")
+            add_custom_command(
+                OUTPUT "${BLS_COMBINED_METALLIB}"
+                COMMAND ${XCRUN} -sdk macosx metallib
+                        ${BLS_PAIR_AIR_FILES} "${BLS_CMIL_AIR}"
+                        -o "${BLS_COMBINED_METALLIB}"
+                DEPENDS ${BLS_PAIR_AIR_FILES} "${BLS_CMIL_AIR}"
+                COMMENT "metallib bls_combined_miller.metallib")
+            add_custom_target(bls_combined_miller_metallib
+                DEPENDS "${BLS_COMBINED_METALLIB}")
+
+            # ---- Metal host driver (Obj-C++) ----
+            add_library(bls_combined_miller_metal_driver STATIC
+                gpu/metal/bls_combined_miller_driver.mm)
+            target_compile_options(bls_combined_miller_metal_driver
+                PRIVATE -O3 -fobjc-arc)
+            target_compile_features(bls_combined_miller_metal_driver
+                PRIVATE cxx_std_17)
+            set_target_properties(bls_combined_miller_metal_driver PROPERTIES
+                POSITION_INDEPENDENT_CODE ON)
+            target_include_directories(bls_combined_miller_metal_driver
+                PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gpu/metal>)
+            target_link_libraries(bls_combined_miller_metal_driver
+                PUBLIC "-framework Metal" "-framework Foundation")
+
+            # ---- C-ABI entry: bls12_381_combined_miller(...) ----
+            # Routes through Metal first (Apple), CUDA next (CI runner),
+            # falls back to CPU oracle.  Test-time builds link blst.
+            add_library(bls_combined_miller_oracle STATIC
+                c-abi/c_bls_combined_miller.cpp)
+            target_compile_options(bls_combined_miller_oracle PRIVATE -O3)
+            target_compile_features(bls_combined_miller_oracle PRIVATE cxx_std_17)
+            set_target_properties(bls_combined_miller_oracle PROPERTIES
+                POSITION_INDEPENDENT_CODE ON)
+            target_compile_definitions(bls_combined_miller_oracle PRIVATE
+                BLS_HAVE_METAL=1)
+            target_include_directories(bls_combined_miller_oracle
+                PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/gpu/metal")
+            target_link_libraries(bls_combined_miller_oracle
+                PUBLIC bls_combined_miller_metal_driver
+                PRIVATE bls_stage1_blst)
+
+            # ---- Test ----
+            add_executable(bls_combined_miller_metal_test
+                test/bls_combined_miller_metal_test.cpp)
+            target_compile_options(bls_combined_miller_metal_test PRIVATE -O3)
+            target_compile_features(bls_combined_miller_metal_test PRIVATE cxx_std_17)
+            target_link_libraries(bls_combined_miller_metal_test PRIVATE
+                bls_combined_miller_oracle bls_stage1_blst)
+            add_dependencies(bls_combined_miller_metal_test
+                bls_combined_miller_metallib)
+
+            # CTest entry: pass the metallib path via env var so the
+            # driver finds it without an install step.
+            add_test(NAME bls-combined-miller-metal-test
+                COMMAND ${CMAKE_COMMAND} -E env
+                    "BLS_COMBINED_MILLER_METALLIB=${BLS_COMBINED_METALLIB}"
+                    $<TARGET_FILE:bls_combined_miller_metal_test>)
+
+            add_custom_target(bls_combined_miller
+                DEPENDS bls_combined_miller_metal_test
+                        bls_combined_miller_metallib)
+
+            # ---- CUDA stub test (runs in stub mode on Apple) ----
+            add_library(bls_combined_miller_cuda_stub STATIC
+                gpu/cuda/bls_combined_miller_driver.cpp)
+            target_compile_options(bls_combined_miller_cuda_stub PRIVATE -O3)
+            target_compile_features(bls_combined_miller_cuda_stub PRIVATE cxx_std_17)
+            set_target_properties(bls_combined_miller_cuda_stub PROPERTIES
+                POSITION_INDEPENDENT_CODE ON)
+            target_include_directories(bls_combined_miller_cuda_stub
+                PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/gpu/cuda>)
+
+            add_executable(bls_combined_miller_cuda_test
+                test/bls_combined_miller_cuda_test.cpp)
+            target_compile_options(bls_combined_miller_cuda_test PRIVATE -O3)
+            target_compile_features(bls_combined_miller_cuda_test PRIVATE cxx_std_17)
+            target_link_libraries(bls_combined_miller_cuda_test PRIVATE
+                bls_combined_miller_cuda_stub bls_stage1_blst)
+            add_test(NAME bls-combined-miller-cuda-test
+                COMMAND bls_combined_miller_cuda_test)
+            add_custom_target(bls-combined-miller-cuda-test
+                DEPENDS bls_combined_miller_cuda_test)
+
+            # ---- WGSL test (SKIP unless WGSL miller driver linked) ----
+            add_executable(bls_combined_miller_wgsl_test
+                test/bls_combined_miller_wgsl_test.cpp)
+            target_compile_options(bls_combined_miller_wgsl_test PRIVATE -O3)
+            target_compile_features(bls_combined_miller_wgsl_test PRIVATE cxx_std_17)
+            target_link_libraries(bls_combined_miller_wgsl_test PRIVATE
+                bls_stage1_blst)
+            add_test(NAME bls-combined-miller-wgsl-test
+                COMMAND bls_combined_miller_wgsl_test)
+            add_custom_target(bls-combined-miller-wgsl-test
+                DEPENDS bls_combined_miller_wgsl_test)
+
+            # ---- Aggregate target name as referenced by build commands ----
+            add_custom_target(bls_combined_miller_all
+                DEPENDS bls_combined_miller_metal_test
+                        bls_combined_miller_cuda_test
+                        bls_combined_miller_wgsl_test
+                        bls_combined_miller_metallib)
+
+            message(STATUS "[bls-combined-miller] enabled — Metal/CUDA/WGSL")
+            message(STATUS "[bls-combined-miller]   metallib: ${BLS_COMBINED_METALLIB}")
         endif()
     else()
         message(STATUS "[bls-stage1] skipped — blst not found at ${BLST_DIR}")

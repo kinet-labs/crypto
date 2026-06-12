@@ -25,12 +25,12 @@ if(APPLE AND CRYPTO_ENABLE_METAL)
 endif()
 
 # Batched BLAKE2b CUDA kernel + host-emulation entry point.
-# When KINET_CRYPTO_ENABLE_CUDA=ON the .cu file is compiled by nvcc with the
+# When CRYPTO_ENABLE_CUDA=ON the .cu file is compiled by nvcc with the
 # real __global__ kernel exposed as blake2b_jobs. When CUDA is off (default
 # CPU-only build) the same .cu file compiles as host C++ via the
 # __CUDA_ARCH__ shim and exposes blake2b_batch_cuda_host for the
 # determinism test, which is byte-equal to the device kernel by construction.
-if(KINET_CRYPTO_ENABLE_CUDA)
+if(CRYPTO_ENABLE_CUDA)
     add_library(blake2b_batch_cuda STATIC gpu/cuda/blake2b.cu)
     set_target_properties(blake2b_batch_cuda PROPERTIES
         POSITION_INDEPENDENT_CODE ON

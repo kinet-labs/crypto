@@ -16,7 +16,7 @@
 //      are landed correctly so future work composes them into a verify
 //      kernel without revisiting the hash core.
 //
-// Tests skip silently when KINET_CRYPTO_MLDSA_METALLIB is unset (non-Apple
+// Tests skip silently when CRYPTO_MLDSA_METALLIB is unset (non-Apple
 // builds, CI without Metal).
 
 #include <array>
@@ -252,10 +252,10 @@ int main() {
     std::fprintf(stdout, "=== mldsa Metal test suite ===\n");
 
 #if __APPLE__
-    const char* metallib = std::getenv("KINET_CRYPTO_MLDSA_METALLIB");
+    const char* metallib = std::getenv("CRYPTO_MLDSA_METALLIB");
     if (!metallib) {
         std::fprintf(stdout,
-                     "(skip: KINET_CRYPTO_MLDSA_METALLIB unset)\n"
+                     "(skip: CRYPTO_MLDSA_METALLIB unset)\n"
                      "=== ALL TESTS PASSED (GPU skipped) ===\n");
         return 0;
     }

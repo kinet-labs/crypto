@@ -3,7 +3,7 @@
 //
 // Reads a deterministic KAT fixture produced by
 //   pedersen/test/tools/gen_pedersen_metal_kat.go
-// (path supplied via the KINET_CRYPTO_PEDERSEN_KAT env var).
+// (path supplied via the CRYPTO_PEDERSEN_KAT env var).
 //
 // For every one of the 100 rounds in the fixture, dispatches the Metal
 // pipeline (pedersen_pointmul + pedersen_reduce_add) and compares the M
@@ -52,10 +52,10 @@ int main() {
     std::fprintf(stdout, "=== ALL TESTS PASSED (GPU skipped) ===\n");
     return 0;
 #else
-    const char* kat_path  = std::getenv("KINET_CRYPTO_PEDERSEN_KAT");
-    const char* metallib  = std::getenv("KINET_CRYPTO_PEDERSEN_METALLIB");
+    const char* kat_path  = std::getenv("CRYPTO_PEDERSEN_KAT");
+    const char* metallib  = std::getenv("CRYPTO_PEDERSEN_METALLIB");
     if (!kat_path || !metallib) {
-        std::fprintf(stdout, "(skip: KINET_CRYPTO_PEDERSEN_KAT or KINET_CRYPTO_PEDERSEN_METALLIB unset)\n");
+        std::fprintf(stdout, "(skip: CRYPTO_PEDERSEN_KAT or CRYPTO_PEDERSEN_METALLIB unset)\n");
         std::fprintf(stdout, "=== ALL TESTS PASSED (GPU skipped) ===\n");
         return 0;
     }

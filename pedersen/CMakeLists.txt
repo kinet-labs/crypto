@@ -20,9 +20,16 @@ target_include_directories(pedersen PUBLIC
 # Batched Pedersen vector-commitment Metal driver (BN254 G1).  Two-stage
 # pipeline (pedersen_pointmul + pedersen_reduce_add); byte-equal to the Go
 # canonical at github.com/kinet-labs/crypto/pedersen.
-if(APPLE AND KINET_CRYPTO_ENABLE_METAL)
+#
+# Also ships the tree-reduce single-dispatch kernel + driver specialised at
+# the Verkle node width N = 256
+# (gpu/metal/pedersen_tree.{metal,_driver.{h,mm}}). One threadgroup per
+# commitment; threadgroup-cooperative reduction collapses log_2 N = 8 host
+# -> GPU dispatches into one.
+if(APPLE AND CRYPTO_ENABLE_METAL)
     add_library(pedersen_metal STATIC
-        gpu/metal/pedersen_driver.mm)
+        gpu/metal/pedersen_driver.mm
+        gpu/metal/pedersen_tree_driver.mm)
     target_compile_features(pedersen_metal PUBLIC cxx_std_20)
     set_target_properties(pedersen_metal PROPERTIES
         POSITION_INDEPENDENT_CODE ON
@@ -38,15 +45,22 @@ if(APPLE AND KINET_CRYPTO_ENABLE_METAL)
 endif()
 
 # Batched Pedersen CUDA driver.  pedersen.cu compiles in two flavours:
-#   * with nvcc (KINET_CRYPTO_ENABLE_CUDA=ON, project enables CUDA language) it
+#   * with nvcc (CRYPTO_ENABLE_CUDA=ON, project enables CUDA language) it
 #     produces real device kernels and the host driver links them.
 #   * without CUDA the host driver compiles in stub mode (returns -1) so
 #     downstream tests still build but skip dispatch.
-if(KINET_CRYPTO_ENABLE_CUDA)
+#
+# The tree-reduce variant (pedersen_tree.{cu,_driver.{h,cpp}}) ships in the
+# same archive: M blocks of 256 threads with block-shared-memory tree
+# reduction, single-dispatch.
+if(CRYPTO_ENABLE_CUDA)
     add_library(pedersen_cuda STATIC
         gpu/cuda/pedersen.cu
-        gpu/cuda/pedersen_driver_cuda.cpp)
+        gpu/cuda/pedersen_driver_cuda.cpp
+        gpu/cuda/pedersen_tree.cu
+        gpu/cuda/pedersen_tree_driver.cpp)
     set_source_files_properties(gpu/cuda/pedersen.cu PROPERTIES LANGUAGE CUDA)
+    set_source_files_properties(gpu/cuda/pedersen_tree.cu PROPERTIES LANGUAGE CUDA)
     target_compile_definitions(pedersen_cuda PRIVATE KINET_PEDERSEN_HAVE_CUDA=1)
     set_target_properties(pedersen_cuda PROPERTIES
         POSITION_INDEPENDENT_CODE ON
@@ -54,19 +68,24 @@ if(KINET_CRYPTO_ENABLE_CUDA)
     target_include_directories(pedersen_cuda PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/gpu/cuda)
 else()
-    # Compile only the host driver stub so consumers can still link a
+    # Compile only the host driver stubs so consumers can still link a
     # symbol-complete pedersen_cuda library on hosts without nvcc.
     add_library(pedersen_cuda STATIC
-        gpu/cuda/pedersen_driver_cuda.cpp)
+        gpu/cuda/pedersen_driver_cuda.cpp
+        gpu/cuda/pedersen_tree_driver.cpp)
     set_target_properties(pedersen_cuda PROPERTIES POSITION_INDEPENDENT_CODE ON)
     target_include_directories(pedersen_cuda PUBLIC
         ${CMAKE_CURRENT_SOURCE_DIR}/gpu/cuda)
 endif()
 target_compile_features(pedersen_cuda PUBLIC cxx_std_20)
 
-# Batched Pedersen WebGPU/WGSL driver.  The single shader source is embedded
-# at configure time as a const char* so the driver can submit it via Dawn /
+# Batched Pedersen WebGPU/WGSL driver.  Each shader source is embedded at
+# configure time as a const char* so the driver can submit it via Dawn /
 # wgpu-native without runtime file I/O.
+#
+# Two shaders ship in the same archive:
+#   * pedersen.wgsl       -- two-stage pointmul + reduce_add pipeline
+#   * pedersen_tree.wgsl  -- single-dispatch tree-reduce kernel at N = 256
 set(_ped_wgsl_src    ${CMAKE_CURRENT_SOURCE_DIR}/gpu/wgsl/pedersen.wgsl)
 set(_ped_wgsl_embed  ${CMAKE_CURRENT_BINARY_DIR}/pedersen_wgsl_source.h)
 file(READ ${_ped_wgsl_src} _ped_wgsl_content)
@@ -74,15 +93,23 @@ file(WRITE  ${_ped_wgsl_embed} "// Auto-generated. Do not edit.\n#pragma once\n\
 file(APPEND ${_ped_wgsl_embed}
     "static constexpr char kPedersenWGSL[] = R\"PEDWGSL(\n${_ped_wgsl_content}\n)PEDWGSL\";\n")
 
+set(_ped_tree_wgsl_src   ${CMAKE_CURRENT_SOURCE_DIR}/gpu/wgsl/pedersen_tree.wgsl)
+set(_ped_tree_wgsl_embed ${CMAKE_CURRENT_BINARY_DIR}/pedersen_tree_wgsl_source.h)
+file(READ ${_ped_tree_wgsl_src} _ped_tree_wgsl_content)
+file(WRITE  ${_ped_tree_wgsl_embed} "// Auto-generated. Do not edit.\n#pragma once\n\n")
+file(APPEND ${_ped_tree_wgsl_embed}
+    "static constexpr char kPedersenTreeWGSL[] = R\"PEDTRWGSL(\n${_ped_tree_wgsl_content}\n)PEDTRWGSL\";\n")
+
 add_library(pedersen_wgpu STATIC
-    gpu/wgsl/pedersen_driver_wgpu.cpp)
+    gpu/wgsl/pedersen_driver_wgpu.cpp
+    gpu/wgsl/pedersen_tree_driver.cpp)
 target_compile_features(pedersen_wgpu PUBLIC cxx_std_20)
 set_target_properties(pedersen_wgpu PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(pedersen_wgpu PUBLIC
     ${CMAKE_CURRENT_SOURCE_DIR}/gpu/wgsl
     ${CMAKE_CURRENT_BINARY_DIR})
 
-if(KINET_CRYPTO_ENABLE_WGSL)
+if(CRYPTO_ENABLE_WGSL)
     find_path(_PED_WGPU_INCLUDE webgpu.h
         HINTS /opt/homebrew/include /usr/local/include /usr/include)
     find_library(_PED_WGPU_LIB NAMES wgpu_native wgpu

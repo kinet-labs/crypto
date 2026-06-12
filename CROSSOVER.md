@@ -36,6 +36,41 @@ threshold-gated dispatch. Pattern matches `Threshold*` constants in
 | EVM bytecode kernel | V1 (1 thread/tx) | 28 M ops/sec (sequential CPU) | min 39 M ops/sec at N=1000-2000; 49 M ops/sec at N=5000 | **N~=2000** (1.5x); already wins at N=5000 (1.75x) | gate at n>=2000 (V1); V2 32-thread/tx FAILs byte-equality on M1, do not gate |
 | AIVM FullRound (keccak-chain transition) | end-to-end | 1.36 - 40.7 ms across small/medium/large/xlarge | 26.5 - 706 ms (0.05x - 0.06x at every size) | **never** within sampled range | CPU-only on M1; dGPU-ready architecture (per-thread parallelism) |
 
+## Acceleration kernels (LP-160..LP-166)
+
+Seven acceleration kernels shipped 2026-04-28 under the canonical
+three-backend layout (Metal / CUDA / WGSL + CPU oracle). Numbers below
+are CPU-side measurements on the same Apple M1 Max host as the rest of
+this file unless otherwise noted; per-backend GPU numbers land in CI
+on the `hanzo-build-linux-amd64` runner with `CRYPTO_HAS_CUDA=1` /
+`CRYPTO_HAS_DAWN=1` and feed back into this table as they arrive.
+
+| LP | Kernel | CPU baseline | LP path | Crossover / ratio | Source |
+|----|--------|-------------|---------|---|---|
+| LP-160 | secp256k1 / BN254 / BLS12-381 / Banderwagon batch Fp inversion | N independent Fermat exps | 1 inv + 3·(N-1) muls | `N* = 8` (Metal), `N* = 16` (CUDA), `N* = 32` (WGSL); 14× at N=1024 on M1 Max Metal | `secp256k1/test/batch_inv_*_test`; commit `856b9a35` (CUDA+WGSL port) |
+| LP-161 | Multi-curve Pippenger MSM | per-curve scalar-mul + accumulate | one templated kernel via `curve_traits<C>` | KAT 22/22 pass on first commit (8 secp256k1 incl. n=0, 7 BN254, 7 Banderwagon, 1 BLS12-381 NOTIMPL contract test); KAT lifts to **29/29** when the BLS12-381 G1 first-party body lands (header-only adapter is in place at `gpukit/curve_traits/bls12_381_g1_traits.h`) | `gpukit/test/multi_pippenger_test`; commit `741f7c3f` |
+| LP-162 | BLS12-381 combined-pair Miller loop (k pairs fused) | k independent Miller dispatches + Fp12 product | 1 fused dispatch | **9.50×** at k=1024 (BridgeVM v0.60 measured); `k* = 2` | `bls/test/bls_combined_miller_*_test`; commit `2fede848` |
+| LP-163 | Karatsuba bigint modexp | intx CIOS schoolbook | recursive 3-mul split + Karatsuba-SOS | mul-only: **1.34×** at 2048-bit, **1.26×** at 4096-bit; end-to-end RSA-e=65537 modexp: **0.99×** at 1024-bit, **0.29×** at 2048-bit (CIOS still wins), **1.93×** at 4096-bit (Karatsuba-SOS wins). `K_THRESHOLD = 32 limbs (2048 bits)` | `modexp/test/modexp_karatsuba_bench`; commit `f35eedd2` (Paillier 2048-bit consumer) |
+| LP-164 | Six-step lattice NTT (Bailey 1990) | radix-2 Cooley-Tukey ceiling at N=2^16 | √N · √N factor + transpose | **6–9 Mops/s** at N=2^20 single-thread CPU (Apple M2 Ultra); cross-backend GPU equality validated structurally on macOS via the CPU-fallthrough oracle. Crossover: `N ≤ 2^13` schoolbook, `2^14–2^16` radix-2, `2^17–2^20` six-step | `ntt/test/ntt_large_test`; commit `8d058ded` (consumer hooks via poly_mul) |
+| LP-165 | Pedersen width-256 tree-reduce vector commit | sequential 256-step accumulator (linear loop) | `log₂(256) = 8`-depth pairwise reduction in shared memory | Apple M2 Ultra Metal: **0.73×** (3 814 µs tree-reduce vs 2 774 µs legacy two-stage — Apple's 24 KiB threadgroup memory caps occupancy at width 256). Wins on devices with 192 KiB shared memory per SM (NVIDIA A100 / H100). CPU stays linear (oracle). `w* = 8` for the GPU path | `pedersen/test/pedersen_tree_*_determinism_test`; commit `8d058ded` |
+| LP-166 | FROST + CGGMP21 batched threshold pre-signing | sequential per-slot pre-sign (MPCVM v0.62) | M·N parallel pre-signatures in one dispatch | FROST: **6/6** `frost_presign_test` pass on commit `8e8fb102`; 128 commitments/s × 2 backends at M=10 N=64 locally. CGGMP21: **4/4** `cggmp21_presign_test` pass on commit `f35eedd2` (full 2048-bit Paillier + Π^enc + LP-163 Karatsuba 4096-bit modexp). Projected **5.0–7.2×** at M=7 N=64 vs sequential | `frost/test/frost_presign_test`, `cggmp21/test/cggmp21_presign_test`; commits `debeab78` (FROST aggregate+verify), `f35eedd2` (Paillier) |
+
+The 2048-bit modexp end-to-end ratio (0.29×) is the honest CIOS-still-wins
+zone: Karatsuba mul wins inside the limb product (1.34×), but the
+Karatsuba-SOS reduction wrapper at 32 limbs spends its savings on
+higher per-step bookkeeping vs the tighter CIOS Montgomery loop. The
+4096-bit row is where Karatsuba pulls ahead end-to-end (1.93×) — that
+is the RSA-4096-attestation hot path the LP-163 spec targets, and
+where the Paillier 2048-bit ciphertext arithmetic (Z_{N²} at N²≈4096
+bits) lives.
+
+The multi-pippenger 22/22 KAT pass on first commit is the BLS12-381
+NOTIMPL-contract test passing alongside three real curves; the
+header-only `bls12_381_g1_traits.h` adapter is in place and activates
+under `GPUKIT_MP_HAS_BLS12_381_G1=1` once a first-party (no-blst) BLS
+G1 Jacobian + Pippenger body lands. At that point the bls_notimpl
+contract test flips to a real KAT and the count goes to 29/29.
+
 ## Substrate-wide context
 
 The QuasarGPUEngine substrate is structurally never beating CPU on M1 Max

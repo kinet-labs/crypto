@@ -41,7 +41,7 @@
 // This is *not* the BLS12-381 KZG construction the consensus layer uses for
 // pairing-based verification; it is the deterministic Fr-field surrogate that
 // gives us a byte-stable CPU oracle to validate every backend against. The
-// EIP-4844 KAT vectors are accepted when KINET_CRYPTO_KZG_KAT_DIR is set;
+// EIP-4844 KAT vectors are accepted when CRYPTO_KZG_KAT_DIR is set;
 // otherwise the determinism harness alone gates ctest.
 #pragma once
 

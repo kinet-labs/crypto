@@ -109,7 +109,7 @@ const char* crypto_version(void);
 #define CRYPTO_ALG_AEAD_CHACHA     (1ULL << 5)
 #define CRYPTO_ALG_AEAD_AES_GCM    (1ULL << 6)
 #define CRYPTO_ALG_SECP256K1       (1ULL << 7)   /* recover only; sign/verify still NOTIMPL */
-#define CRYPTO_ALG_SECP256R1       (1ULL << 8)   /* NOTIMPL */
+#define CRYPTO_ALG_SECP256R1       (1ULL << 8)   /* verify wired (RIP-7212/EIP-7951) */
 #define CRYPTO_ALG_ED25519         (1ULL << 9)
 #define CRYPTO_ALG_SR25519         (1ULL << 10)  /* NOTIMPL */
 #define CRYPTO_ALG_BN254           (1ULL << 11)  /* add/mul/pairing wired */
@@ -119,13 +119,13 @@ const char* crypto_version(void);
 #define CRYPTO_ALG_MLKEM           (1ULL << 15)
 #define CRYPTO_ALG_SLHDSA          (1ULL << 16)
 #define CRYPTO_ALG_FROST           (1ULL << 17)  /* NOTIMPL */
-#define CRYPTO_ALG_CGGMP21         (1ULL << 18)  /* NOTIMPL */
+#define CRYPTO_ALG_CGGMP21         (1ULL << 18)  /* setup/partial_sign wired; aggregate+verify host-side */
 #define CRYPTO_ALG_RINGTAIL        (1ULL << 19)  /* NOTIMPL */
 #define CRYPTO_ALG_IPA             (1ULL << 20)  /* modern create_proof/check_proof wired; legacy commit/verify NOTIMPL */
 #define CRYPTO_ALG_LAMPORT         (1ULL << 21)
-#define CRYPTO_ALG_PEDERSEN        (1ULL << 22)  /* vector form wired; legacy single-scalar NOTIMPL */
+#define CRYPTO_ALG_PEDERSEN        (1ULL << 22)  /* vector + tree commit wired */
 #define CRYPTO_ALG_POSEIDON_BN254  (1ULL << 23)
-#define CRYPTO_ALG_POSEIDON_GLDLKS (1ULL << 24)  /* NOTIMPL */
+#define CRYPTO_ALG_POSEIDON_GLDLKS (1ULL << 24)
 #define CRYPTO_ALG_VERKLE          (1ULL << 25)  /* NOTIMPL — IPA blocker */
 #define CRYPTO_ALG_MODEXP          (1ULL << 26)
 #define CRYPTO_ALG_EVM256          (1ULL << 27)
@@ -275,18 +275,27 @@ int frost_aggregate      (frost_ctx* ctx, const uint8_t* partials, size_t n_part
 int frost_verify         (const uint8_t pk[32], const uint8_t* msg, size_t msg_len, const uint8_t sig[64]);
 void frost_destroy       (frost_ctx* ctx);
 
-// CGGMP21 (threshold ECDSA)
+// CGGMP21 (threshold ECDSA). Aggregation is host-side / network-bound and
+// final ECDSA verification is plain secp256k1 (use secp256k1_verify); they
+// are deliberately not exposed in the C-ABI.
 int cggmp21_setup        (uint32_t t, uint32_t n, cggmp21_ctx** out);
 int cggmp21_partial_sign (cggmp21_ctx* ctx, const uint8_t* msg, size_t msg_len, uint32_t signer_id, uint8_t* partial);
-int cggmp21_aggregate    (cggmp21_ctx* ctx, const uint8_t* partials, size_t n, uint8_t sig[64]);
-int cggmp21_verify       (const uint8_t pk[64], const uint8_t* msg, size_t msg_len, const uint8_t sig[64]);
 void cggmp21_destroy     (cggmp21_ctx* ctx);
 
-// Ringtail (lattice threshold sigs)
-int ringtail_setup       (uint32_t t, uint32_t n, ringtail_ctx** out);
-int ringtail_sign        (ringtail_ctx* ctx, const uint8_t* msg, size_t msg_len, uint8_t* sig, size_t* sig_len);
-int ringtail_verify      (const uint8_t* pk, size_t pk_len, const uint8_t* msg, size_t msg_len, const uint8_t* sig, size_t sig_len);
-void ringtail_destroy    (ringtail_ctx* ctx);
+// Ringtail (Ring-LWE threshold sig over R_q = Z_q[X]/(X^N+1)). See
+// ringtail/cpp/ringtail.hpp for parameters (Q = 998244353, N = 512, K = L = 4).
+//
+// Two-pass length convention: pass sig_len pointing to the caller's buffer
+// size; on CRYPTO_ERR_LENGTH (or sig == nullptr), *sig_len is rewritten with
+// the required byte length. ringtail_pk_size() / ringtail_sig_size() are
+// constants for the pinned parameter set.
+int    ringtail_setup       (uint32_t t, uint32_t n, ringtail_ctx** out);
+int    ringtail_sign        (ringtail_ctx* ctx, const uint8_t* msg, size_t msg_len, uint8_t* sig, size_t* sig_len);
+int    ringtail_verify      (const uint8_t* pk, size_t pk_len, const uint8_t* msg, size_t msg_len, const uint8_t* sig, size_t sig_len);
+int    ringtail_pk          (const ringtail_ctx* ctx, uint8_t* out_pk, size_t out_len);
+size_t ringtail_pk_size     (void);
+size_t ringtail_sig_size    (void);
+void   ringtail_destroy     (ringtail_ctx* ctx);
 
 // =============================================================================
 // ZK primitives
@@ -301,9 +310,26 @@ int lamport_keygen       (const uint8_t seed[32], uint8_t* pk, uint8_t* sk);
 int lamport_sign         (const uint8_t* sk, const uint8_t msg32[32], uint8_t* sig);
 int lamport_verify       (const uint8_t* pk, const uint8_t msg32[32], const uint8_t* sig);
 
-// Pedersen commitments
-int pedersen_commit      (const uint8_t* values, size_t n, const uint8_t blinding[32], uint8_t commit[33]);
-int pedersen_verify      (const uint8_t commit[33], const uint8_t* values, size_t n, const uint8_t blinding[32]);
+// Pedersen vector commitments — see pedersen/c-abi/c_pedersen.cpp for the
+// full surface (pedersen_generators_from_seed, pedersen_vector_commit,
+// pedersen_vector_verify_open, pedersen_tree_commit).
+
+// Pedersen tree-reduce vector commit at the fixed Verkle width N = 256.
+// Single-shot variant of pedersen_vector_commit that the GPU backend can
+// satisfy in one dispatch via threadgroup-cooperative tree reduction
+// (saves log_2(256) = 8 host -> GPU round-trips). Always callable; falls
+// back to the CPU reference when no GPU device is present.
+//
+//   scalars     : 256 * 32 bytes   -- raw BE Fr elements
+//   blinding    : 32 bytes         -- raw BE Fr scalar
+//   gens_g_xy   : 256 * 64 bytes   -- G_basis[i].x || .y in raw BE
+//   gens_h_xy   : 64 bytes         -- H.x || H.y in raw BE
+//   out_xy      : 64 bytes         -- commitment.x || .y in raw BE
+//
+// Returns CRYPTO_OK on success, CRYPTO_ERR_INPUT on null / bad input.
+int pedersen_tree_commit (const uint8_t* scalars, const uint8_t blinding[32],
+                          const uint8_t* gens_g_xy, const uint8_t gens_h_xy[64],
+                          uint8_t out_xy[64]);
 
 // Poseidon hash (Goldilocks + BN254/Fr variants)
 int poseidon_goldilocks  (const uint8_t* in, size_t in_len, uint8_t out[32]);
@@ -322,6 +348,14 @@ int modexp(const uint8_t* base, size_t base_len,
            const uint8_t* exp,  size_t exp_len,
            const uint8_t* mod,  size_t mod_len,
            uint8_t* out);
+
+// Same as modexp() but forces the Karatsuba-Montgomery (SOS) inner loop for
+// moduli ≥ 1024 bits (RSA-attestation lanes). Byte-identical output to
+// modexp() for any input; the difference is interior multiplication strategy.
+int modexp_karatsuba(const uint8_t* base, size_t base_len,
+                     const uint8_t* exp,  size_t exp_len,
+                     const uint8_t* mod,  size_t mod_len,
+                     uint8_t* out);
 
 // EVM 256-bit math primitives
 int evm256_mulmod        (const uint8_t a[32], const uint8_t b[32], const uint8_t m[32], uint8_t out[32]);

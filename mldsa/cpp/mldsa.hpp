@@ -19,8 +19,8 @@
 //
 // =============================================================================
 
-#ifndef KINET_CRYPTO_MLDSA_HPP
-#define KINET_CRYPTO_MLDSA_HPP
+#ifndef CRYPTO_MLDSA_HPP
+#define CRYPTO_MLDSA_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -65,4 +65,4 @@ bool verify_87(const std::uint8_t* sig, std::size_t siglen,
 
 }  // namespace kinet::crypto::mldsa
 
-#endif  // KINET_CRYPTO_MLDSA_HPP
+#endif  // CRYPTO_MLDSA_HPP

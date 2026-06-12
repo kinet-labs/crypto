@@ -27,11 +27,13 @@ void random_le(uint8_t* p, size_t bytes, std::mt19937_64& rng, bool nonzero) {
     p[bytes - 1] &= 0x0F;
 }
 
+using inv_fn = int (*)(const uint8_t*, uint8_t*, size_t);
+
 void run_field(const char* tag, size_t elem_bytes,
-               int (*cpu)(const uint8_t*, uint8_t*, size_t),
-               int (*metal)(const uint8_t*, uint8_t*, size_t),
-               int (*cuda)(const uint8_t*, uint8_t*, size_t),
-               int (*wgsl)(const uint8_t*, uint8_t*, size_t),
+               inv_fn cpu,
+               inv_fn metal,
+               inv_fn cuda,
+               inv_fn wgsl,  /* nullptr when CRYPTO_ENABLE_WGSL=0 */
                std::mt19937_64& rng) {
     for (size_t s = 0; s < 3; ++s) {
         size_t n = SIZES[s];
@@ -53,8 +55,10 @@ void run_field(const char* tag, size_t elem_bytes,
         }
         int rcc = cuda(in.data(), g_out.data(), n);
         if (rcc == GPUKIT_ERR_NOTIMPL) ++g_cuda_skip;
-        int rcw = wgsl(in.data(), g_out.data(), n);
-        if (rcw == GPUKIT_ERR_NOTIMPL) ++g_wgsl_skip;
+        if (wgsl) {
+            int rcw = wgsl(in.data(), g_out.data(), n);
+            if (rcw == GPUKIT_ERR_NOTIMPL) ++g_wgsl_skip;
+        }
     }
 }
 
@@ -68,17 +72,32 @@ int main() {
             gpukit_batch_inv_secp256k1_fp_cpu,
             gpukit_batch_inv_secp256k1_fp_metal,
             gpukit_batch_inv_secp256k1_fp_cuda,
-            gpukit_batch_inv_secp256k1_fp_wgsl, rng);
+#if CRYPTO_ENABLE_WGSL
+            gpukit_batch_inv_secp256k1_fp_wgsl,
+#else
+            nullptr,
+#endif
+            rng);
         run_field("bn254",     32,
             gpukit_batch_inv_bn254_fp_cpu,
             gpukit_batch_inv_bn254_fp_metal,
             gpukit_batch_inv_bn254_fp_cuda,
-            gpukit_batch_inv_bn254_fp_wgsl, rng);
+#if CRYPTO_ENABLE_WGSL
+            gpukit_batch_inv_bn254_fp_wgsl,
+#else
+            nullptr,
+#endif
+            rng);
         run_field("bls12_381", 48,
             gpukit_batch_inv_bls12_381_fp_cpu,
             gpukit_batch_inv_bls12_381_fp_metal,
             gpukit_batch_inv_bls12_381_fp_cuda,
-            gpukit_batch_inv_bls12_381_fp_wgsl, rng);
+#if CRYPTO_ENABLE_WGSL
+            gpukit_batch_inv_bls12_381_fp_wgsl,
+#else
+            nullptr,
+#endif
+            rng);
     }
     std::fprintf(stdout, "cpu=%d metal_skip=%d cuda_skip=%d wgsl_skip=%d failures=%d\n",
         g_cpu, g_metal_skip, g_cuda_skip, g_wgsl_skip, g_failures);

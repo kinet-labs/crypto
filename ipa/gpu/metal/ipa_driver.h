@@ -14,8 +14,8 @@
 // kinet-labs/crypto/ipa.CheckMultiProofBatch (Go reference).
 // =============================================================================
 
-#ifndef KINET_CRYPTO_IPA_DRIVER_H
-#define KINET_CRYPTO_IPA_DRIVER_H
+#ifndef CRYPTO_IPA_DRIVER_H
+#define CRYPTO_IPA_DRIVER_H
 
 #include <stdint.h>
 #include <stddef.h>
@@ -40,4 +40,4 @@ int ipa_msm_metal(const uint8_t* scalars,    // n * 32 bytes BE Fr
 }
 #endif
 
-#endif  // KINET_CRYPTO_IPA_DRIVER_H
+#endif  // CRYPTO_IPA_DRIVER_H

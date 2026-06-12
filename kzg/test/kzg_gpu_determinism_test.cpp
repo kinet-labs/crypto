@@ -11,7 +11,7 @@
 // hardware, the same vectors flow through the actual kernel and byte-equality
 // is asserted against the CPU oracle.
 //
-// The optional EIP-4844 KAT block runs when KINET_CRYPTO_KZG_KAT_DIR is set;
+// The optional EIP-4844 KAT block runs when CRYPTO_KZG_KAT_DIR is set;
 // otherwise it is skipped.
 
 #include "../cpp/kzg_oracle.hpp"
@@ -180,12 +180,12 @@ void run_verify(Tally& t, const char* backend,
 }
 
 void run_eip4844_kat(Tally& t) {
-    const char* dir = std::getenv("KINET_CRYPTO_KZG_KAT_DIR");
+    const char* dir = std::getenv("CRYPTO_KZG_KAT_DIR");
     if (!dir || !dir[0]) {
-        std::printf("[kat] KINET_CRYPTO_KZG_KAT_DIR not set; KAT block skipped\n");
+        std::printf("[kat] CRYPTO_KZG_KAT_DIR not set; KAT block skipped\n");
         return;
     }
-    std::printf("[kat] KINET_CRYPTO_KZG_KAT_DIR=%s\n", dir);
+    std::printf("[kat] CRYPTO_KZG_KAT_DIR=%s\n", dir);
     PRNG g(0xDEADBEEFCAFEBABEULL);
     std::vector<std::uint8_t> blob(kBlobBytes), commit(kCommitBytes);
     gen_blob(g, blob.data());

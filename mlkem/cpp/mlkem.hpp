@@ -18,8 +18,8 @@
 //
 // =============================================================================
 
-#ifndef KINET_CRYPTO_MLKEM_HPP
-#define KINET_CRYPTO_MLKEM_HPP
+#ifndef CRYPTO_MLKEM_HPP
+#define CRYPTO_MLKEM_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -44,4 +44,4 @@ bool decap_1024(std::uint8_t* ss, const std::uint8_t* ct, const std::uint8_t* sk
 
 }  // namespace kinet::crypto::mlkem
 
-#endif  // KINET_CRYPTO_MLKEM_HPP
+#endif  // CRYPTO_MLKEM_HPP

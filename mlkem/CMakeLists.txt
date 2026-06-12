@@ -57,7 +57,7 @@ target_include_directories(mlkem_cpu PRIVATE
     ${_pqclean}/common)
 
 # Batched ML-KEM decap Metal driver (one thread per ciphertext).
-if(APPLE AND KINET_CRYPTO_ENABLE_METAL AND
+if(APPLE AND CRYPTO_ENABLE_METAL AND
    EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/metal/mlkem_batch_driver.mm)
     add_library(mlkem_batch_metal STATIC
         gpu/metal/mlkem_batch_driver.mm)

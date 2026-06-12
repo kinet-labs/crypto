@@ -14,7 +14,7 @@ kinet_add_algorithm(
 # =============================================================================
 # Metal drivers (Apple GPUs).
 # =============================================================================
-if(APPLE AND KINET_CRYPTO_ENABLE_METAL)
+if(APPLE AND CRYPTO_ENABLE_METAL)
     add_library(aead_batch_metal STATIC
         gpu/metal/aead_batch_driver.mm)
     target_compile_features(aead_batch_metal PUBLIC cxx_std_20)
@@ -39,7 +39,7 @@ endif()
 # =============================================================================
 # CUDA drivers + determinism test.
 #
-# The .cu files compile only when KINET_CRYPTO_ENABLE_CUDA is ON (NVCC required).
+# The .cu files compile only when CRYPTO_ENABLE_CUDA is ON (NVCC required).
 # The host driver compiles on every host: with KINET_AEAD_HAVE_CUDA defined it
 # launches the kernels; without, it returns -1 from every entry point so the
 # determinism test prints a "build-only" banner on Apple.
@@ -47,7 +47,7 @@ endif()
 
 # Always build the host driver (stub or real). On Apple this gives us the
 # build-only path (compiles, links, returns -1). On Linux+CUDA CI we set
-# KINET_CRYPTO_ENABLE_CUDA=ON which flips the driver into real-dispatch mode
+# CRYPTO_ENABLE_CUDA=ON which flips the driver into real-dispatch mode
 # and additionally compiles the .cu kernels.
 
 add_library(aead_cuda_driver STATIC gpu/cuda/aead_driver_cuda.cpp)
@@ -59,7 +59,7 @@ target_include_directories(aead_cuda_driver
 target_compile_features(aead_cuda_driver PUBLIC cxx_std_20)
 set_target_properties(aead_cuda_driver PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-if(KINET_CRYPTO_ENABLE_CUDA)
+if(CRYPTO_ENABLE_CUDA)
     enable_language(CUDA)
     add_library(aead_cuda_kernels STATIC
         gpu/cuda/chacha20_poly1305.cu

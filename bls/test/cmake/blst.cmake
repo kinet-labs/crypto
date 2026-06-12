@@ -13,7 +13,7 @@
 #   - bls_*_test.mm asserts our Metal/CUDA/CPU implementations equal blst byte-for-byte.
 #
 # To enable test-oracle compilation:
-#   cmake -DKINET_CRYPTO_BLS_BUILD_ORACLE=ON ..
+#   cmake -DCRYPTO_BLS_BUILD_ORACLE=ON ..
 
 include_guard()
 include(ExternalProject)

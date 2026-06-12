@@ -26,9 +26,9 @@ endif()
 
 # =============================================================================
 # CUDA driver (host TU + .cu kernel). Build modes:
-#   * KINET_CRYPTO_ENABLE_CUDA=ON  -> compile sha256.cu via nvcc; link to a real
+#   * CRYPTO_ENABLE_CUDA=ON  -> compile sha256.cu via nvcc; link to a real
 #                                   driver that talks to the CUDA runtime.
-#   * KINET_CRYPTO_ENABLE_CUDA=OFF -> compile only the host shim in stub mode
+#   * CRYPTO_ENABLE_CUDA=OFF -> compile only the host shim in stub mode
 #                                   so the test harness can call the C ABI
 #                                   on Apple/non-CUDA hosts (returns 0
 #                                   "available?" -> false; skips compare).
@@ -40,7 +40,7 @@ target_include_directories(sha256_batch_cuda PUBLIC
 target_compile_features(sha256_batch_cuda PUBLIC cxx_std_20)
 set_target_properties(sha256_batch_cuda PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-if(KINET_CRYPTO_ENABLE_CUDA)
+if(CRYPTO_ENABLE_CUDA)
     target_compile_definitions(sha256_batch_cuda PRIVATE KINET_SHA256_HAVE_CUDA=1)
     # Compile the kernel via nvcc and link as a CUDA TU.
     target_sources(sha256_batch_cuda PRIVATE gpu/cuda/sha256.cu)
@@ -71,7 +71,7 @@ target_include_directories(sha256_batch_wgpu
 target_compile_features(sha256_batch_wgpu PUBLIC cxx_std_20)
 set_target_properties(sha256_batch_wgpu PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
-if(KINET_CRYPTO_ENABLE_WGSL)
+if(CRYPTO_ENABLE_WGSL)
     find_path(_SHA256_WGPU_INCLUDE webgpu.h
         HINTS /opt/homebrew/include /usr/local/include /usr/include)
     find_library(_SHA256_WGPU_LIB NAMES wgpu_native wgpu

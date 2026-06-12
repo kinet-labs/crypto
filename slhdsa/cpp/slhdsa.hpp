@@ -23,8 +23,8 @@
 //
 // =============================================================================
 
-#ifndef KINET_CRYPTO_SLHDSA_HPP
-#define KINET_CRYPTO_SLHDSA_HPP
+#ifndef CRYPTO_SLHDSA_HPP
+#define CRYPTO_SLHDSA_HPP
 
 #include <cstddef>
 #include <cstdint>
@@ -87,4 +87,4 @@ bool verify_shake_256f(const std::uint8_t* sig, std::size_t siglen,
 
 }  // namespace kinet::crypto::slhdsa
 
-#endif  // KINET_CRYPTO_SLHDSA_HPP
+#endif  // CRYPTO_SLHDSA_HPP

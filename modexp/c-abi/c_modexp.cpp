@@ -82,35 +82,66 @@ extern "C" int evm256_mulmod(const uint8_t a[32], const uint8_t b[32],
     return CRYPTO_OK;
 }
 
+namespace
+{
+// Shared input validation for modexp / modexp_karatsuba C-ABI entries.
+// Returns CRYPTO_OK and *handled=true when the call was fully handled by a
+// trivial-case shortcut (empty modulus or zero modulus). Returns CRYPTO_OK
+// and *handled=false when the caller should proceed with the multi-precision
+// body. Returns CRYPTO_ERR_INPUT and *handled=true on null pointers.
+int modexp_prologue(const uint8_t* base, size_t base_len,
+                    const uint8_t* exp,  size_t exp_len,
+                    const uint8_t* mod,  size_t mod_len,
+                    uint8_t* out, bool* handled) noexcept
+{
+    *handled = true;
+    if (base_len > 0 && base == nullptr) return CRYPTO_ERR_INPUT;
+    if (exp_len  > 0 && exp  == nullptr) return CRYPTO_ERR_INPUT;
+    if (mod_len  > 0 && mod  == nullptr) return CRYPTO_ERR_INPUT;
+    if (mod_len  > 0 && out  == nullptr) return CRYPTO_ERR_INPUT;
+    if (mod_len == 0) return CRYPTO_OK;  // Empty modulus → empty output.
+
+    // EIP-198: modulus of zero produces a zero-filled result of mod_len bytes.
+    for (size_t i = 0; i < mod_len; ++i)
+    {
+        if (mod[i] != 0)
+        {
+            *handled = false;
+            return CRYPTO_OK;
+        }
+    }
+    std::memset(out, 0, mod_len);
+    return CRYPTO_OK;
+}
+}  // namespace
+
 extern "C" int modexp(const uint8_t* base, size_t base_len,
                       const uint8_t* exp,  size_t exp_len,
                       const uint8_t* mod,  size_t mod_len,
                       uint8_t* out)
 {
-    if (base_len > 0 && base == nullptr) return CRYPTO_ERR_INPUT;
-    if (exp_len  > 0 && exp  == nullptr) return CRYPTO_ERR_INPUT;
-    if (mod_len  > 0 && mod  == nullptr) return CRYPTO_ERR_INPUT;
-    if (mod_len  > 0 && out  == nullptr) return CRYPTO_ERR_INPUT;
-    if (mod_len == 0)
-        return CRYPTO_OK;  // Empty modulus → empty output (nothing to write).
-
-    // EIP-198: modulus of zero produces a zero-filled result of mod_len bytes.
-    bool mod_is_zero = true;
-    for (size_t i = 0; i < mod_len; ++i)
-    {
-        if (mod[i] != 0)
-        {
-            mod_is_zero = false;
-            break;
-        }
-    }
-    if (mod_is_zero)
-    {
-        std::memset(out, 0, mod_len);
-        return CRYPTO_OK;
-    }
+    bool handled = false;
+    const int rc = modexp_prologue(base, base_len, exp, exp_len, mod, mod_len, out, &handled);
+    if (rc != CRYPTO_OK || handled) return rc;
 
     cevm::crypto::modexp(
+        std::span<const uint8_t>{base, base_len},
+        std::span<const uint8_t>{exp, exp_len},
+        std::span<const uint8_t>{mod, mod_len},
+        out);
+    return CRYPTO_OK;
+}
+
+extern "C" int modexp_karatsuba(const uint8_t* base, size_t base_len,
+                                const uint8_t* exp,  size_t exp_len,
+                                const uint8_t* mod,  size_t mod_len,
+                                uint8_t* out)
+{
+    bool handled = false;
+    const int rc = modexp_prologue(base, base_len, exp, exp_len, mod, mod_len, out, &handled);
+    if (rc != CRYPTO_OK || handled) return rc;
+
+    cevm::crypto::modexp_karatsuba(
         std::span<const uint8_t>{base, base_len},
         std::span<const uint8_t>{exp, exp_len},
         std::span<const uint8_t>{mod, mod_len},

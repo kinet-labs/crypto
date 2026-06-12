@@ -163,10 +163,10 @@ int run_batch(size_t M, uint64_t seed_base, const char* metallib_path) {
 }  // namespace
 
 int main() {
-    const char* metallib_path = std::getenv("KINET_CRYPTO_AES_GCM_METALLIB");
+    const char* metallib_path = std::getenv("CRYPTO_AES_GCM_METALLIB");
     if (!metallib_path) {
         std::fprintf(stderr,
-            "SKIP aes_gcm_metal_determinism_test (KINET_CRYPTO_AES_GCM_METALLIB not set)\n");
+            "SKIP aes_gcm_metal_determinism_test (CRYPTO_AES_GCM_METALLIB not set)\n");
         return 0;
     }
 

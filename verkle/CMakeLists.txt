@@ -6,11 +6,6 @@ kinet_add_algorithm(
     CABI    c-abi/c_verkle.cpp
 )
 
-if(KINET_CRYPTO_BUILD_TESTS)
-    add_executable(verkle_test test/verkle_test.cpp)
-    target_link_libraries(verkle_test PRIVATE verkle_cpu)
-    target_include_directories(verkle_test PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}/cpp
-    )
-    add_test(NAME verkle_test COMMAND verkle_test)
-endif()
+# Tests are registered in the top-level CMakeLists.txt after enable_testing()
+# has been called -- per-algo add_test() before that point silently fails to
+# register with CTest. See top-level "Per-algorithm tests" block.

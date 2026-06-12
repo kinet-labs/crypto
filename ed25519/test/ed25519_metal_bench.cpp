@@ -3,7 +3,7 @@
 // curve / SHA-512 ops) vs Metal kernel dispatch. Median of 10 runs each,
 // Release build. Reports the crossover N_threshold where Metal wins.
 //
-// Skipped silently when KINET_CRYPTO_ED25519_METALLIB is unset.
+// Skipped silently when CRYPTO_ED25519_METALLIB is unset.
 
 #include "../cpp/sha512_minimal.hpp"
 
@@ -263,9 +263,9 @@ int main() {
     std::fprintf(stdout, "=== ed25519 batch-verify CPU vs Metal sweep ===\n");
 
 #if __APPLE__
-    const char* metallib = std::getenv("KINET_CRYPTO_ED25519_METALLIB");
+    const char* metallib = std::getenv("CRYPTO_ED25519_METALLIB");
     if (!metallib) {
-        std::fprintf(stdout, "(skip: KINET_CRYPTO_ED25519_METALLIB unset)\n");
+        std::fprintf(stdout, "(skip: CRYPTO_ED25519_METALLIB unset)\n");
         return 0;
     }
 

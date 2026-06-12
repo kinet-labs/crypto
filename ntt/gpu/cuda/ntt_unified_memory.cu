@@ -5,9 +5,6 @@
 //
 // On CUDA, "unified memory" maps to cudaMallocManaged. The kernel structure
 // is identical; the host-side allocation strategy differs.
-//
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: Apache-2.0
 
 #include <cstdint>
 

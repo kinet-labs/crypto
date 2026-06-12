@@ -42,10 +42,14 @@ int main() {
             size_t n = SIZES[s];
             run<uint32_t>("u32-metal", rng, n, gpukit_radix_sort_u32_cpu, gpukit_radix_sort_u32_metal, g_metal_pass, g_metal_skip);
             run<uint32_t>("u32-cuda",  rng, n, gpukit_radix_sort_u32_cpu, gpukit_radix_sort_u32_cuda,  g_cuda_pass,  g_cuda_skip);
+#if CRYPTO_ENABLE_WGSL
             run<uint32_t>("u32-wgsl",  rng, n, gpukit_radix_sort_u32_cpu, gpukit_radix_sort_u32_wgsl,  g_wgsl_pass,  g_wgsl_skip);
+#endif
             run<uint64_t>("u64-metal", rng, n, gpukit_radix_sort_u64_cpu, gpukit_radix_sort_u64_metal, g_metal_pass, g_metal_skip);
             run<uint64_t>("u64-cuda",  rng, n, gpukit_radix_sort_u64_cpu, gpukit_radix_sort_u64_cuda,  g_cuda_pass,  g_cuda_skip);
+#if CRYPTO_ENABLE_WGSL
             run<uint64_t>("u64-wgsl",  rng, n, gpukit_radix_sort_u64_cpu, gpukit_radix_sort_u64_wgsl,  g_wgsl_pass,  g_wgsl_skip);
+#endif
         }
     }
     std::fprintf(stdout, "cpu=%d metal_pass=%d metal_skip=%d cuda_pass=%d cuda_skip=%d wgsl_pass=%d wgsl_skip=%d failures=%d\n",

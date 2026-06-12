@@ -10,7 +10,7 @@
 // match those bit-for-bit. Negative variants flip a byte in either sig or
 // pubkey and assert the kernel rejects them.
 //
-// Skipped silently when KINET_CRYPTO_ED25519_METALLIB is unset.
+// Skipped silently when CRYPTO_ED25519_METALLIB is unset.
 
 #include "../cpp/sha512_minimal.hpp"
 
@@ -200,9 +200,9 @@ int main() {
     std::fprintf(stdout, "=== ed25519 CPU vs Metal byte-equality (RFC 8032) ===\n");
 
 #if __APPLE__
-    const char* metallib = std::getenv("KINET_CRYPTO_ED25519_METALLIB");
+    const char* metallib = std::getenv("CRYPTO_ED25519_METALLIB");
     if (!metallib) {
-        std::fprintf(stdout, "(skip GPU equality: KINET_CRYPTO_ED25519_METALLIB unset)\n");
+        std::fprintf(stdout, "(skip GPU equality: CRYPTO_ED25519_METALLIB unset)\n");
         std::fprintf(stdout, "=== ALL TESTS PASSED (GPU skipped) ===\n");
         return 0;
     }

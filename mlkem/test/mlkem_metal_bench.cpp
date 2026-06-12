@@ -33,9 +33,9 @@ static double median(std::vector<double>& v) {
 int main() {
     std::fprintf(stdout, "=== mlkem Metal dispatch sweep (NOTIMPL orchestrator) ===\n");
 #if __APPLE__
-    const char* metallib = std::getenv("KINET_CRYPTO_MLKEM_METALLIB");
+    const char* metallib = std::getenv("CRYPTO_MLKEM_METALLIB");
     if (!metallib) {
-        std::fprintf(stdout, "(skip: KINET_CRYPTO_MLKEM_METALLIB unset)\n");
+        std::fprintf(stdout, "(skip: CRYPTO_MLKEM_METALLIB unset)\n");
         return 0;
     }
     constexpr size_t SIZES[] = {1, 16, 64, 256, 1024, 4096};

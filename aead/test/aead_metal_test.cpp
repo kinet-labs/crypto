@@ -54,10 +54,10 @@ struct Rng {
 }  // namespace
 
 int main() {
-    const char* metallib_path = std::getenv("KINET_CRYPTO_AEAD_METALLIB");
+    const char* metallib_path = std::getenv("CRYPTO_AEAD_METALLIB");
     if (!metallib_path) {
         std::fprintf(stderr,
-            "SKIP aead_metal_test (KINET_CRYPTO_AEAD_METALLIB not set)\n");
+            "SKIP aead_metal_test (CRYPTO_AEAD_METALLIB not set)\n");
         return 0;  // skip rather than fail when metallib path unset
     }
 

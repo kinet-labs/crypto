@@ -6,7 +6,7 @@
 //
 // Plaintext per message: 1024 bytes (typical TLS-record sized payload).
 //
-// Skipped silently when KINET_CRYPTO_AEAD_METALLIB is unset.
+// Skipped silently when CRYPTO_AEAD_METALLIB is unset.
 
 #include "crypto.h"
 #include "../cpp/aead.hpp"
@@ -56,10 +56,10 @@ double median_ms(std::vector<double>& v) {
 }  // namespace
 
 int main() {
-    const char* metallib_path = std::getenv("KINET_CRYPTO_AEAD_METALLIB");
+    const char* metallib_path = std::getenv("CRYPTO_AEAD_METALLIB");
     if (!metallib_path) {
         std::fprintf(stderr,
-            "SKIP aead_metal_bench (KINET_CRYPTO_AEAD_METALLIB not set)\n");
+            "SKIP aead_metal_bench (CRYPTO_AEAD_METALLIB not set)\n");
         return 0;
     }
 

@@ -3,7 +3,7 @@
 // Generates 100 random (left, right) Fr pairs (BE-encoded mod q to ensure
 // canonical inputs), hashes each with both poseidon/cpp/poseidon.cpp::hash2
 // and the Metal kernel poseidon2_hash2_batch, and asserts byte-equal output.
-// Skipped silently when KINET_CRYPTO_POSEIDON2_METALLIB is unset (lets the
+// Skipped silently when CRYPTO_POSEIDON2_METALLIB is unset (lets the
 // test still register on non-Apple hosts and during CMake configure).
 
 #include "../cpp/poseidon.hpp"
@@ -42,9 +42,9 @@ int main() {
     std::fprintf(stdout, "=== Poseidon2-BN254 CPU vs Metal byte-equality (gnark v0.20.1) ===\n");
 
 #if __APPLE__
-    const char* metallib = std::getenv("KINET_CRYPTO_POSEIDON2_METALLIB");
+    const char* metallib = std::getenv("CRYPTO_POSEIDON2_METALLIB");
     if (!metallib) {
-        std::fprintf(stdout, "(skip GPU equality: KINET_CRYPTO_POSEIDON2_METALLIB unset)\n");
+        std::fprintf(stdout, "(skip GPU equality: CRYPTO_POSEIDON2_METALLIB unset)\n");
         std::fprintf(stdout, "=== ALL TESTS PASSED (GPU skipped) ===\n");
         return 0;
     }

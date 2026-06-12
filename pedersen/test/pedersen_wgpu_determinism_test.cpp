@@ -42,9 +42,9 @@ int main() {
         return 0;
     }
 
-    const char* kat_path = std::getenv("KINET_CRYPTO_PEDERSEN_KAT");
+    const char* kat_path = std::getenv("CRYPTO_PEDERSEN_KAT");
     if (!kat_path) {
-        std::fprintf(stdout, "(skip: KINET_CRYPTO_PEDERSEN_KAT unset)\n");
+        std::fprintf(stdout, "(skip: CRYPTO_PEDERSEN_KAT unset)\n");
         std::fprintf(stdout, "=== ALL TESTS PASSED (GPU skipped) ===\n");
         return 0;
     }

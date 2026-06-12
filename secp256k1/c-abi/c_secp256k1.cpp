@@ -8,6 +8,7 @@
 
 #include "crypto.h"
 #include "kinet/crypto/secp256k1.h"
+#include "../cpp/ecdsa.hpp"
 
 #include <cstring>
 
@@ -25,15 +26,23 @@ extern "C" int secp256k1_recover(const uint8_t msg32[32],
     return st == SECP256K1_OK ? CRYPTO_OK : CRYPTO_ERR_VERIFY;
 }
 
-// Phase 3 wires up the remaining secp256k1 entry points (sign, verify,
-// sk_to_pk). For now they advertise NOTIMPL so callers get a clear signal.
+// First-party ECDSA sign / verify / sk_to_pk wired to cpp/ecdsa.{hpp,cpp}.
+// RFC 6979 deterministic-k for sign; BIP-62 Low-S enforced; verify validates
+// pubkey on-curve before scalar arithmetic.
 extern "C" int secp256k1_sign(const uint8_t sk[32],
                               const uint8_t msg32[32],
                               uint8_t sig[64],
                               uint8_t* recid) {
     if (sk == nullptr || msg32 == nullptr || sig == nullptr || recid == nullptr)
         return CRYPTO_ERR_INPUT;
-    return CRYPTO_ERR_NOTIMPL;
+    using kinet::crypto::secp256k1::EcdsaStatus;
+    const auto st = kinet::crypto::secp256k1::sign(sk, msg32, sig, recid);
+    switch (st) {
+        case EcdsaStatus::OK:                return CRYPTO_OK;
+        case EcdsaStatus::InvalidSecret:     return CRYPTO_ERR_INPUT;
+        case EcdsaStatus::InvalidSignature:  return CRYPTO_ERR_INTERNAL;
+        default:                             return CRYPTO_ERR_INTERNAL;
+    }
 }
 
 extern "C" int secp256k1_verify(const uint8_t pk[64],
@@ -41,10 +50,20 @@ extern "C" int secp256k1_verify(const uint8_t pk[64],
                                 const uint8_t sig[64]) {
     if (pk == nullptr || msg32 == nullptr || sig == nullptr)
         return CRYPTO_ERR_INPUT;
-    return CRYPTO_ERR_NOTIMPL;
+    using kinet::crypto::secp256k1::EcdsaStatus;
+    const auto st = kinet::crypto::secp256k1::verify(pk, msg32, sig);
+    switch (st) {
+        case EcdsaStatus::OK:                return CRYPTO_OK;
+        case EcdsaStatus::InvalidPubkey:     return CRYPTO_ERR_INPUT;
+        case EcdsaStatus::InvalidSignature:  return CRYPTO_ERR_INPUT;
+        case EcdsaStatus::VerifyFailed:      return CRYPTO_ERR_VERIFY;
+        default:                             return CRYPTO_ERR_INTERNAL;
+    }
 }
 
 extern "C" int secp256k1_sk_to_pk(const uint8_t sk[32], uint8_t pk[64]) {
     if (sk == nullptr || pk == nullptr) return CRYPTO_ERR_INPUT;
-    return CRYPTO_ERR_NOTIMPL;
+    using kinet::crypto::secp256k1::EcdsaStatus;
+    const auto st = kinet::crypto::secp256k1::secret_to_public(sk, pk);
+    return st == EcdsaStatus::OK ? CRYPTO_OK : CRYPTO_ERR_INPUT;
 }

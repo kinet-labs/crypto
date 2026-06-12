@@ -2,9 +2,6 @@
 // Twiddle Hotset Caching Kernels for CUDA
 // =============================================================================
 // CUDA port of twiddle_cache.metal -- byte-identical arithmetic output.
-//
-// Copyright (C) 2024-2025 Kinet Industries Inc.
-// SPDX-License-Identifier: BSD-2-Clause
 
 #include <cstdint>
 

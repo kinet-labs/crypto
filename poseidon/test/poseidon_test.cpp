@@ -123,7 +123,7 @@ static bool from_hex32(const std::string& s, uint8_t out[32]) {
 int main() {
     std::fprintf(stdout, "=== poseidon2-bn254 KAT (gnark-crypto compatible) ===\n");
 
-    const char* env = std::getenv("KINET_CRYPTO_POSEIDON_VECTORS");
+    const char* env = std::getenv("CRYPTO_POSEIDON_VECTORS");
     std::string path = env ? env :
         "poseidon/test/vectors/poseidon2_t2_kat.json";
     std::string raw = slurp(path);

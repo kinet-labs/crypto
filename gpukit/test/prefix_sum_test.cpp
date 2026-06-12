@@ -55,9 +55,11 @@ int main() {
             run_one<uint32_t>("u32-cuda",  rng, n,
                 gpukit_prefix_sum_u32_cpu, gpukit_prefix_sum_u32_cuda,
                 g_cuda_pass, g_cuda_skip);
+#if CRYPTO_ENABLE_WGSL
             run_one<uint32_t>("u32-wgsl",  rng, n,
                 gpukit_prefix_sum_u32_cpu, gpukit_prefix_sum_u32_wgsl,
                 g_wgsl_pass, g_wgsl_skip);
+#endif
 
             run_one<uint64_t>("u64-metal", rng, n,
                 gpukit_prefix_sum_u64_cpu, gpukit_prefix_sum_u64_metal,
@@ -65,9 +67,11 @@ int main() {
             run_one<uint64_t>("u64-cuda",  rng, n,
                 gpukit_prefix_sum_u64_cpu, gpukit_prefix_sum_u64_cuda,
                 g_cuda_pass, g_cuda_skip);
+#if CRYPTO_ENABLE_WGSL
             run_one<uint64_t>("u64-wgsl",  rng, n,
                 gpukit_prefix_sum_u64_cpu, gpukit_prefix_sum_u64_wgsl,
                 g_wgsl_pass, g_wgsl_skip);
+#endif
         }
     }
     std::fprintf(stdout, "cpu_pass=%d metal_pass=%d metal_skip=%d cuda_pass=%d cuda_skip=%d wgsl_pass=%d wgsl_skip=%d failures=%d\n",

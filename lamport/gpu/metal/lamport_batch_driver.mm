@@ -15,8 +15,6 @@
 // Returns 0 on success, negative error code otherwise. The kernel itself is
 // byte-equal to /Users/z/work/kinet-labs/crypto/lamport/cpp/lamport.cpp::verify().
 //
-// SPDX-License-Identifier: BSD-3-Clause-Eco
-// Copyright (C) 2025-2026 Kinet Industries Inc.
 // =============================================================================
 
 #if __APPLE__ && __OBJC__

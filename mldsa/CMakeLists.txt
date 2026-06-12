@@ -72,7 +72,7 @@ target_include_directories(mldsa_cpu PRIVATE
 # verify orchestrator itself emits CRYPTO_ERR_NOTIMPL until a full FIPS-204
 # verify port is byte-equal to the CPU body. The CPU body (this archive) is
 # now real PQClean and ships byte-equal NIST-compliant verify.
-if(APPLE AND KINET_CRYPTO_ENABLE_METAL AND
+if(APPLE AND CRYPTO_ENABLE_METAL AND
    EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/gpu/metal/mldsa_batch_driver.mm)
     add_library(mldsa_batch_metal STATIC
         gpu/metal/mldsa_batch_driver.mm)

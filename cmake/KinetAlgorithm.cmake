@@ -135,5 +135,5 @@ function(kinet_add_algorithm)
     endif()
     add_library(kinet::${_target_all} ALIAS ${_target_all})
 
-    set_property(GLOBAL APPEND PROPERTY KINET_CRYPTO_ALGORITHMS ${LA_NAME})
+    set_property(GLOBAL APPEND PROPERTY CRYPTO_ALGORITHMS ${LA_NAME})
 endfunction()
